@@ -1,4 +1,4 @@
-# Gerbil
+# Gerbil's Inkscape Plug Ins
 
 These plugs have been modified to meet the G-code standard so the can run in Gerbil's firmware. The engraving Plugin has been modified extensively while the Jtech vector plugin has been only modified slightly (remove the M18 command)
 
