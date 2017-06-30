@@ -39,3 +39,4 @@ The instructions for using of JTech Inkscape plug in can be found here: https://
 - Upload a raster or vector file
 - Hit the Play button
 
+Caveat for cncjs: files can be not large unless you change the source code to allow bigger files (limit is configured to 10Mb because the did not envisage the use of this for laser engraving)
