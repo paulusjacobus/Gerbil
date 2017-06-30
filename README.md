@@ -40,3 +40,12 @@ The instructions for using of JTech Inkscape plug in can be found here: https://
 - Hit the Play button
 
 Caveat for cncjs: files can be not large unless you change the source code to allow bigger files (limit is configured to 10Mb because the did not envisage the use of this for laser engraving)
+
+## Streamer.py for streaming large gcode engraving files to Gerbil
+
+You need to have Python installed on your machine to use it on the command line.
+Potentially the python script will run because you installed Inkscape which is build on Python.
+
+Cmd Streamer.py <name_of_the_file> <connectedcomport>
+For example:
+>c:streamer.py name_0001_Gray_256_gcode.txt com1
