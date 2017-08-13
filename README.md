@@ -27,7 +27,10 @@ Once the laser head starts sputtering you know you are driving the controller to
 ## Using the Cutting Plug in:
 The instructions for using of JTech Inkscape plug in can be found here: https://jtechphotonics.com/?page_id=2012
 
-Also allows engraving via vectors and describes how to combine engraving and cutting with vectors. The download version on here on Github has been altered: the M18 command has been removed to make it compatible with Grbl.
+Also this plugin allows engraving via vectors (not rastering) and describes how to combine vector engraving and cutting. The download version on here on Github has been altered: the M18 command has been removed to make it compatible with Grbl.
+In inkscape, mirror the Y axis to everything looks mirrored in Inkscape and in CNCJS. THis is done so the user of the K40 does not have to change their Y axis end stop.
+Letter engraving or cutting.
+Select the letter tool from inkscape (Big A icon) icons on the left vertical bar, write some text on the canvas (Document properties set to A4, landscape). Select from menu option "Text", "put on path".  Select from menu "Path", "Object to path", select from menu "Extensions", the "Generate G-code/J-Tech Photonics" plugin, generate gcode. Now you can cut letters and numbers from acrylic for your house and council garbage collection bins!
 
 ## Sending it to the Gerbil Controller
 
