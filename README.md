@@ -12,7 +12,7 @@ Second step: Start Inskcape and see if the Plugins turn up in the extensions men
 
 Engraving settings for 256 Gray levels:
 - Max resolution 382 DPI or 15Pixels/mm with a max speed of 1000mm/min
-- Lower resolutions can use higher engraving speed (upo to 2000mm/min)
+- Lower resolutions can use higher engraving speed (up to 2000mm/min)
 
 Once the laser head starts sputtering you know you are driving the controller too hard and reduce its speed.
 
@@ -27,6 +27,8 @@ Once the laser head starts sputtering you know you are driving the controller to
 ## Using the Cutting Plug in:
 The instructions for using of JTech Inkscape plug in can be found here: https://jtechphotonics.com/?page_id=2012
 
+Also allows engraving via vectors and describes how to combine engraving and cutting with vectors. The download version on here on Github has been altered: the M18 command has been removed to make it compatible with Grbl.
+
 ## Sending it to the Gerbil Controller
 
 - Install a G-code sender
@@ -39,7 +41,7 @@ The instructions for using of JTech Inkscape plug in can be found here: https://
 - Upload a raster or vector file
 - Hit the Play button
 
-Caveat for cncjs: files can be not large unless you change the source code to allow bigger files (limit is configured to 10Mb because the did not envisage the use of this for laser engraving)
+Caveat for cncjs: files can be not large unless you change the source code to allow bigger files (limit is configured to 10Mb because the did not envisage the use of this for laser engraving). You can change this in the source code but installation from scratch with maven and node js is a hell. I asked to increase the size which they did for one release and it was back to 10Mb in the next release, sigh.
 
 ## Streamer.py for streaming large gcode engraving files to Gerbil
 
