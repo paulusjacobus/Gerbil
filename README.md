@@ -1,6 +1,6 @@
 # Gerbil's Inkscape Plug Ins
 
-These Inkscape plug ins have been modified to meet the G-code standard so the can run smoothly in Gerbil's firmware. The engraving Plugin has been modified extensively while the Jtech photechnics vector plugin has been only modified slightly (remove the M18 command)
+These Inkscape plug ins have been modified to meet the G-code standard so the can run smoothly in Gerbil's (Grbl) firmware. The engraving Plugin has been modified extensively while the Jtech photonics vector plugin has been only modified slightly (remove the M18 command). You can use these Inkscape plug ins to generate gcode for the basic Grbl Arduino Uno set but the engraving plugin has been modified especially for the customer Gerbil controller to match the Chinese K40 (Stock CO2 laser tube and laser power supply).
 
 First step: Download the Inkscape plugins into your Inkscape/Share/Extensions folder (MAC or Windows)
 
