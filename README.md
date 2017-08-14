@@ -51,9 +51,10 @@ Caveat for cncjs: files can be not large unless you change the source code to al
 
 ## Streamer.py for streaming large gcode engraving files to Gerbil
 
-You need to have Python installed on your machine to use it on the command line.
-https://www.python.org/downloads/ if you run into issues where the computer MAC or WIndows cannot execute the py script from the command line tool.
-Potentially the python script will run because you installed Inkscape which is build on Python.
+Potentially the python script will run because you installed Inkscape which is build on Python. I had mixed experiences with this (one laptop did while the other didn't).
+You might need to have Python installed on your machine to use it via the command line.
+Use https://www.python.org/downloads/ to download and install Python separately, if you run into issues where the computer MAC or Wnndows cannot execute the py script from the command line tool.
+
 
 Cmd Streamer.py <name_of_the_file> <connectedcomport>
 For example:
@@ -62,7 +63,7 @@ The comm port can be looked up quickly via CNCjs if you don't know it.
   
 Alternatively you can enter streamer.py which shows you the option keys
   
-If you stil get python run errors than you might need to install another Python library.
+If you stil run into python errors than you might need to install another Python library.
 Use the command line tool (MAC or WIN) and type:
 >python setup.py install
 
