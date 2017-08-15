@@ -22,7 +22,7 @@
 	<param name="directory" type="string"  gui-text="Export directory"></param>
 	<param name="filename" type="string"  gui-text="File Name"></param>
 	<param name="add-numeric-suffix-to-filename" type="boolean" gui-text="Add numeric suffix to filename">true</param>
-		
+	<param name="port" type="string"  gui-text="USB com port"></param>	
 	<param name="bg_color" type="enum" gui-text="Replace transparency with">
 		<_item value="#ffffff">White</_item>
 		<_item value="#000000">Black</_item>
