@@ -563,37 +563,34 @@ class GcodeExport(inkex.Effect):
 				pass
 			
 			file_gcode.close() #Close the file
-			file_gcode.close() #Close the file
-			#fh = open(file_gcode, 'r')
-			#streaming code start
-			s = serial.Serial()
+		#streaming code start
+		s = serial.Serial()
     		s.baudrate = 115200
     		s.port = self.options.port
-			# Stream g-code to grbl
 		l_count = 0
 		s.open()
 		s.write("$X")
-		time.sleep(2)
+		time.sleep(4)
 		s.flushInput()
 		with open(pos_file_gcode, 'r') as fh:
-			inkex.errormsg("streaming...")
+			#inkex.errormsg("streaming...")
 			for line in fh:
 				l_count += 1 # Iterate line counter    
 				l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
 				#l_block = line.strip() # Strip all EOL characters for consistency
 				s.write(l_block + '\n') # Send g-code block to grbl
-				3inkex.errormsg(l_block)
+				#inkex.errormsg(l_block)
 				while 1:
 					grbl_out = s.readline().strip() # Wait for grbl response with carriage return
 					if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
 						print "\n  Debug: ",grbl_out,
 					else : 
 						break			
-			#streaming code end		
+			#streaming code end
 
-
-
-
+		#inkex.errormsg("completed!")
+		fh.close()	
+		s.close()
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
 
