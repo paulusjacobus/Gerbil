@@ -36,7 +36,9 @@ import math
 import inkex
 import png
 import array
-
+#streamer part
+import time
+import serial
 
 class GcodeExport(inkex.Effect):
 
@@ -49,6 +51,9 @@ class GcodeExport(inkex.Effect):
 		self.OptionParser.add_option("-d", "--directory",action="store", type="string", dest="directory", default="/home/",help="Directory for files") ####check_dir
 		self.OptionParser.add_option("-f", "--filename", action="store", type="string", dest="filename", default="-1.0", help="File name")            
 		self.OptionParser.add_option("","--add-numeric-suffix-to-filename", action="store", type="inkbool", dest="add_numeric_suffix_to_filename", default=True,help="Add numeric suffix to filename")            
+		#stream
+		self.OptionParser.add_option("-d", "--port",action="store", type="string", dest="port", default="16",help="USB Com port")
+		#stream
 		self.OptionParser.add_option("","--bg_color",action="store",type="string",dest="bg_color",default="",help="")
 		self.OptionParser.add_option("","--resolution",action="store", type="int", dest="resolution", default="5",help="") #Usare il valore su float(xy)/resolution e un case per i DPI dell export
 		
@@ -559,6 +564,27 @@ class GcodeExport(inkex.Effect):
 			
 			file_gcode.close() #Close the file
 
+			#streaming code start
+			s = serial.Serial()
+    			s.baudrate = 115200
+    			s.port = self.options.port
+			# Stream g-code to grbl
+			l_count = 0
+			s.write("\r\n\r\n")
+			time.sleep(2)
+			s.flushInput()
+		    	for line in f:
+        			l_count += 1 # Iterate line counter    
+        			# l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+        			l_block = line.strip() # Strip all EOL characters for consistency
+        			s.write(l_block + '\n') # Send g-code block to grbl
+        			while 1:
+            			grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+            			if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
+                			print "\n  Debug: ",grbl_out,
+            			else : 
+                			break			
+			#streaming code end
 
 
 
