@@ -2413,6 +2413,36 @@ class laser_gcode(inkex.Effect):
         f = open(self.options.directory+self.options.file, "w")
         f.write(self.options.laser_off_command + " S0" + "\n" + self.header + "G1 F" + self.options.travel_speed + "\n" + gcode + self.footer)
         f.close()
+# Streaming part
+		#streaming code start
+		s = serial.Serial()
+    		s.baudrate = 115200
+    		s.port = self.options.port
+		l_count = 0
+		s.open()
+		s.write("$X")
+		time.sleep(4)
+		s.flushInput()
+		with open(self.options.directory+self.options.file, 'r') as fh:
+			#inkex.errormsg("streaming...")
+			for line in fh:
+				l_count += 1 # Iterate line counter    
+				l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+				#l_block = line.strip() # Strip all EOL characters for consistency
+				s.write(l_block + '\n') # Send g-code block to grbl
+				#inkex.errormsg(l_block)
+				while 1:
+					grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+					if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
+						print "\n  Debug: ",grbl_out,
+					else : 
+						break			
+			#streaming code end
+
+		#inkex.errormsg("completed!")
+		fh.close()	
+		s.close()
+# End of Streaming part
 
     def __init__(self):
         inkex.Effect.__init__(self)
