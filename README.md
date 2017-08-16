@@ -2,19 +2,19 @@
 
 These Inkscape plug ins have been modified to meet the G-code standard so the can run smoothly in Gerbil's (Grbl) firmware. The engraving Plugin has been modified extensively while the Jtech photonics vector plugin has been only modified slightly (remove the M18 command). You can use these Inkscape plug ins to generate gcode for the basic Grbl Arduino Uno set but the engraving plugin has been modified especially for the customer Gerbil controller to match the Chinese K40 (Stock CO2 laser tube and laser power supply).
 
-First step: Download the Inkscape plugins into your Inkscape/Share/Extensions folder (MAC or Windows)
+First step: Download the Inkscape plugins from above via the button "download as zip". Drag the files .inx and .py into your Inkscape/Share/Extensions folder (MAC or Windows). The other files are example of g-code files and a streamer script (for huge files).
 
 Second step: Start Inskcape and see if the Plugins turn up under the extensions menu.
 
 - Laser commands being used by Gerbil are:
-- Laser On: M4
+- Laser On: M4 (M3 can be used too but only for cutting)
 - Laser Off: M5
 
 Engraving settings for 256 Gray levels:
 - Max resolution 382 DPI or 15Pixels/mm with a max speed of 1000mm/min
 - Lower resolutions can use higher engraving speed (up to 2000mm/min)
 
-Once the laser head starts sputtering then you know you are driving the controller too hard and reduce its speed.
+Once the laser head starts sputtering then you know you are driving your controller too hard and you should reduce its speed.
 
 ## Using the Raster Engraving plugin:
 - Import a picture from the File, Import menu
