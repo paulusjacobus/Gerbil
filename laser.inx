@@ -17,6 +17,7 @@
 	<param name="filename" type="string" _gui-text="Filename:">output.gcode</param>
 	<param name="add-numeric-suffix-to-filename" type="boolean" _gui-text="Add numeric suffix to filename">true</param>
 	<param name="port" type="string" _gui-text="USB port:">port</param>
+	<param name="stream" type="boolean" gui-text="Stream directly via usb">true</param>
 	
   <param name="unit" type="enum" _gui-text="All Units (mm or in):">
     <item value="G21 (All units in mm)">mm</item>
