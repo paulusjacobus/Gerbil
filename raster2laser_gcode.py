@@ -2,7 +2,7 @@
 # ----------------------------------------------------------------------------
 # Copyright (C) 2014 305engineering <305engineering@gmail.com>
 # Original concept by 305engineering.
-# Adapted for Grbl Arduino Uno K40 Laser Controller
+# Adapted for Gerbil K40 Laser Controller by Awesome.tech
 # "THE MODIFIED BEER-WARE LICENSE" (Revision: my own :P):
 # <305engineering@gmail.com> wrote this file. As long as you retain this notice you
 # can do whatever you want with this stuff (except sell). If we meet some day, 
