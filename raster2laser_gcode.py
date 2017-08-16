@@ -585,12 +585,15 @@ class GcodeExport(inkex.Effect):
 					if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
 						print "\n  Debug: ",grbl_out,
 					else : 
-						break			
+						pass #break			
 			#streaming code end
 
 		#inkex.errormsg("completed!")
-		fh.close()	
-		s.close()
+		#fh.close() not needed since with command does handle this
+		if s.is_open True :
+			s.close()
+		else :
+			break
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
 
