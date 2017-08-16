@@ -588,12 +588,10 @@ class GcodeExport(inkex.Effect):
 
 		#inkex.errormsg("completed!")
 		#fh.close() not needed since with command does handle this
+		time.sleep(15)
 		s.flush()
-		timer.sleep(15)
-		if s.is_open True :
-			s.close()
-		else :
-			break
+		s.close()
+		
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
 
