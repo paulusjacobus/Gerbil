@@ -3,7 +3,7 @@
 <!--  -->
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
 	<!-- Nome con cui compare l'estensione nel menù, fa casino con gli underscore _ -->
-	<name>Raster 2 Laser GCode generator</name>
+	<name>K40 Raster2Laser GCode generator</name>
 	<!-- il campo ID deve essere univoco  -->
 	<id>com.305engineering.raster2laser_gcode</id>
 	
@@ -15,14 +15,14 @@
 	<!-- vengono generati in ordine di come vengono scritti  -->
 	
 	<!-- Titolo e descrizione -->
-	<param name="Title" type="description">Raster 2 Laser GCode generator</param>
-	<param name="Description" type="description">created by 305 Engineering</param>
+	<param name="Title" type="description">K40 Raster 2 Laser GCode generator</param>
+	<param name="Description" type="description">created by 305 Engineering, modified by Awesome.tech</param>
     
 	<!-- Opzioni di esportazione dell'immagine -->
 	<param name="directory" type="string"  gui-text="Export directory"></param>
 	<param name="filename" type="string"  gui-text="File Name"></param>
 	<param name="add-numeric-suffix-to-filename" type="boolean" gui-text="Add numeric suffix to filename">true</param>
-	<param name="port" type="string"  gui-text="USB com port"></param>	
+	<param name="port" type="string"  gui-text="USB com port">com4</param>	
 	<param name="bg_color" type="enum" gui-text="Replace transparency with">
 		<_item value="#ffffff">White</_item>
 		<_item value="#000000">Black</_item>
@@ -90,7 +90,7 @@
 	<!-- Anteprima = Solo immagine BN -->
 	<param name="preview_only" type="boolean" gui-text="Preview only">false</param>
 	<param name="p_only" type="description">If "Preview only" is true the gcode file will not be generated.</param>
-
+	<param name="stream" type="boolean" gui-text="Stream directly via usb">true</param>
 
 	<!-- Per togliere la casella Antepima diretta bisogna sostituire <effect> con <effect needs-live-preview="false">  -->
 	<!-- <effect> -->
