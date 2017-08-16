@@ -2414,6 +2414,7 @@ class laser_gcode(inkex.Effect):
         f.write(self.options.laser_off_command + " S0" + "\n" + self.header + "G1 F" + self.options.travel_speed + "\n" + gcode + self.footer)
         f.close()
 # Streaming part
+	if self.options.stream == True: #Stream the file to K40
 		#streaming code start
 		s = serial.Serial()
     		s.baudrate = 115200
