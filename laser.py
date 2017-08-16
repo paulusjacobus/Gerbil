@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
+Modified by Paul de Groot 2017, Awesome.tech
 Modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com
 modified by Adam Polak 2014, polakiumengineering.org
-
 based on Copyright (C) 2009 Nick Drobchenko, nick@cnc-club.ru
 based on gcode.py (C) 2007 hugomatic...
 based on addnodes.py (C) 2005,2007 Aaron Spike, aaron@ekips.org
@@ -2441,8 +2441,12 @@ class laser_gcode(inkex.Effect):
 			#streaming code end
 
 		#inkex.errormsg("completed!")
-		fh.close()	
+		#fh.close()	not required since with.. does handle this internally
+		time.sleep(15)
+		s.flush()
 		s.close()
+
+
 # End of Streaming part
 
     def __init__(self):
