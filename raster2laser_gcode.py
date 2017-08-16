@@ -83,6 +83,7 @@ class GcodeExport(inkex.Effect):
 		
 		# Anteprima = Solo immagine BN 
 		self.OptionParser.add_option("","--preview_only",action="store", type="inkbool", dest="preview_only", default=False,help="") 
+		self.OptionParser.add_option("","--stream",action="store", type="inkbool", dest="stream", default=True,help="") 
 
 		#inkex.errormsg("BLA BLA BLA Messaggio da visualizzare") #DEBUG
 
@@ -427,11 +428,7 @@ class GcodeExport(inkex.Effect):
 			Laser_ON = False
 			#F_G01 = self.options.speed_ON
 			Scala = self.options.resolution
-			#if self.options.resolution == 15:
-			#	F_G01 = 780 #300
-			#elif self.options.resolution == 10:
-			#	F_G01 = 1600 #800
-			#else:
+
 			F_G01 = self.options.speed_ON
 			
 			file_gcode = open(pos_file_gcode, 'w')  #Creo il file
@@ -564,6 +561,7 @@ class GcodeExport(inkex.Effect):
 			
 			file_gcode.close() #Close the file
 		#streaming code start
+	if self.options.preview_only == True: #Stream the file to K40
 		s = serial.Serial()
     		s.baudrate = 115200
     		s.port = self.options.port
