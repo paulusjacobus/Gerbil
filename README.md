@@ -59,6 +59,7 @@ Use https://www.python.org/downloads/ to download and install Python separately,
 Cmd Streamer.py <name_of_the_file> <connectedcomport>
 For example:
 >c:streamer.py name_0001_Gray_256_gcode.txt com1
+  
 The comm port can be looked up quickly via CNCjs if you don't know it.
   
 Alternatively you can enter streamer.py which shows you the option keys
