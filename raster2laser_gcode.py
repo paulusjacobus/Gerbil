@@ -187,8 +187,10 @@ class GcodeExport(inkex.Effect):
 			DPI = 127
 		elif self.options.resolution == 10:
 			DPI = 254
+		elif self.options.resolution == 15:
+			DPI = 382
 		else:
-			DPI = 381 #254 15 pixels
+			DPI = 508 #254 20 pixels
 
 		command="inkscape -C -e \"%s\" -b\"%s\" %s -d %s" % (pos_file_png_exported,bg_color,current_file,DPI) #Comando da linea di comando per esportare in PNG
 					
@@ -578,7 +580,7 @@ class GcodeExport(inkex.Effect):
 				#l_block = line.strip() # Strip all EOL characters for consistency
 				s.write(l_block + '\n') # Send g-code block to grbl
 				#inkex.errormsg(l_block)
-				while true:
+				while True:
 					grbl_out = s.readline().strip() # Wait for grbl response with carriage return
 					if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
 						print "\n  Debug: ",grbl_out,
@@ -590,7 +592,10 @@ class GcodeExport(inkex.Effect):
 		#fh.close() not needed since with command does handle this
 		time.sleep(15)
 		s.flush()
-		s.close()
+		if s.isopen() == True:
+			s.close()
+		else:
+			pass
 		
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
