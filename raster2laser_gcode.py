@@ -578,12 +578,12 @@ class GcodeExport(inkex.Effect):
 				#l_block = line.strip() # Strip all EOL characters for consistency
 				s.write(l_block + '\n') # Send g-code block to grbl
 				#inkex.errormsg(l_block)
-				while 1:
+				while true:
 					grbl_out = s.readline().strip() # Wait for grbl response with carriage return
 					if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
 						print "\n  Debug: ",grbl_out,
 					else : 
-						pass #break			
+						break #pass #break			
 			#streaming code end
 
 		#inkex.errormsg("completed!")
