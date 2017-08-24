@@ -34,6 +34,7 @@
 		<_item value="5">5 pixel/mm</_item>
 		<_item value="10">10 pixel/mm</_item>
 		<_item value="15">15 pixel/mm</_item>
+		<_item value="15">20 pixel/mm</_item>
 	</param>
 		
 	<!-- Come convertire in scala di grigi -->
