@@ -563,39 +563,39 @@ class GcodeExport(inkex.Effect):
 			
 			file_gcode.close() #Close the file
 		#streaming code start
-	if self.options.preview_only == True: #Stream the file to K40
-		s = serial.Serial()
-    		s.baudrate = 115200
-    		s.port = 'com' + str(self.options.port)
-		l_count = 0
-		s.open()
-		s.write("$X")
-		time.sleep(4)
-		s.flushInput()
-		with open(pos_file_gcode, 'r') as fh:
+	#if self.options.preview_only == True: #Stream the file to K40
+	#	s = serial.Serial()
+    	#	s.baudrate = 115200
+    	#	s.port = 'com' + str(self.options.port)
+	#	l_count = 0
+	#	s.open()
+	#	s.write("$X")
+	#	time.sleep(4)
+	#	s.flushInput()
+	#	with open(pos_file_gcode, 'r') as fh:
 			#inkex.errormsg("streaming...")
-			for line in fh:
-				l_count += 1 # Iterate line counter    
-				l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-				#l_block = line.strip() # Strip all EOL characters for consistency
-				s.write(l_block + '\n') # Send g-code block to grbl
-				#inkex.errormsg(l_block)
-				while True:
-					grbl_out = s.readline().strip() # Wait for grbl response with carriage return
-					if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
-						print "\n  Debug: ",grbl_out,
-					else : 
-						break #pass #break			
+	#		for line in fh:
+	#			l_count += 1 # Iterate line counter    
+	#			l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+	#			#l_block = line.strip() # Strip all EOL characters for consistency
+	#			s.write(l_block + '\n') # Send g-code block to grbl
+	#			#inkex.errormsg(l_block)
+	#			while True:
+	#				grbl_out = s.readline().strip() # Wait for grbl response with carriage return
+	#				if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
+	#					print "\n  Debug: ",grbl_out,
+	#				else : 
+	#					break #pass #break			
 			#streaming code end
 
 		#inkex.errormsg("completed!")
 		#fh.close() not needed since with command does handle this
-		time.sleep(15)
-		s.flush()
-		if s.isopen() == True:
-			s.close()
-		else:
-			pass
+	#	time.sleep(15)
+	#	s.flush()
+	#	if s.isopen() == True:
+	#		s.close()
+	#	else:
+	#		pass
 		
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
