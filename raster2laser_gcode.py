@@ -52,7 +52,7 @@ class GcodeExport(inkex.Effect):
 		self.OptionParser.add_option("-f", "--filename", action="store", type="string", dest="filename", default="-1.0", help="File name")            
 		self.OptionParser.add_option("","--add-numeric-suffix-to-filename", action="store", type="inkbool", dest="add_numeric_suffix_to_filename", default=True,help="Add numeric suffix to filename")            
 		#stream
-		self.OptionParser.add_option("-d", "--port",action="store", type="int", dest="port", default="1",help="USB Com port")
+		#self.OptionParser.add_option("-d", "--port",action="store", type="int", dest="port", default="1",help="USB Com port")
 		#stream
 		self.OptionParser.add_option("","--bg_color",action="store",type="string",dest="bg_color",default="",help="")
 		self.OptionParser.add_option("","--resolution",action="store", type="int", dest="resolution", default="5",help="") #Usare il valore su float(xy)/resolution e un case per i DPI dell export
