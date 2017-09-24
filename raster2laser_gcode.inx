@@ -22,7 +22,7 @@
 	<param name="directory" type="string"  gui-text="Export directory"></param>
 	<param name="filename" type="string"  gui-text="File Name"></param>
 	<param name="add-numeric-suffix-to-filename" type="boolean" gui-text="Add numeric suffix to filename">true</param>
-	<param name="port" type="int"  min="1" max="99" gui-text="USB com port">1</param>
+	
 	<param name="bg_color" type="enum" gui-text="Replace transparency with">
 		<_item value="#ffffff">White</_item>
 		<_item value="#000000">Black</_item>
@@ -34,7 +34,6 @@
 		<_item value="5">5 pixel/mm</_item>
 		<_item value="10">10 pixel/mm</_item>
 		<_item value="15">15 pixel/mm</_item>
-		<_item value="15">20 pixel/mm</_item>
 	</param>
 		
 	<!-- Come convertire in scala di grigi -->
@@ -72,7 +71,7 @@
 
 	
 	<!-- Velocità Nero e spostamento -->
-	<param name="speed_ON" type="int" min="1" max="5000" gui-text="Engraving speed">800</param>
+	<param name="speed_ON" type="int" min="1" max="5000" gui-text="Engraving speed">1200</param>
 	
 	<!-- FLIP = coordinate Cartesiane (False) Coordinate "informatiche" (True) -->
 	<param name="flip_y" type="boolean" gui-text="Flip Y">false</param>
