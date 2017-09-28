@@ -589,13 +589,17 @@ class GcodeExport(inkex.Effect):
 			#streaming code end
 
 		#inkex.errormsg("completed!")
-		#fh.close() not needed since with command does handle this
+		#try:
+		#	fh.close() not needed since with command does handle this                           
+        	#except:
+            	#	inkex.errormsg(("Can not write to specified file!"))
+		#	return
 	#	time.sleep(15)
 	#	s.flush()
 	#	if s.isopen() == True:
 	#		s.close()
 	#	else:
-	#		pass
+	#		pass return?
 		
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
