@@ -190,7 +190,7 @@ class GcodeExport(inkex.Effect):
 		elif self.options.resolution == 15:
 			DPI = 382
 		else:
-			DPI = 508 #254 20 pixels
+			DPI = 382 #254 20 pixels
 
 		command="inkscape -C -e \"%s\" -b\"%s\" %s -d %s" % (pos_file_png_exported,bg_color,current_file,DPI) #Comando da linea di comando per esportare in PNG
 					
