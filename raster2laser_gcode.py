@@ -2,7 +2,7 @@
 # ----------------------------------------------------------------------------
 # Copyright (C) 2014 305engineering <305engineering@gmail.com>
 # Original concept by 305engineering.
-# Adapted for Gerbil K40 Laser Controller by Awesome.tech
+# Adapted for Grbl Arduino Uno K40 Laser Controller
 # "THE MODIFIED BEER-WARE LICENSE" (Revision: my own :P):
 # <305engineering@gmail.com> wrote this file. As long as you retain this notice you
 # can do whatever you want with this stuff (except sell). If we meet some day, 
@@ -39,7 +39,11 @@ import array
 #streamer part
 import time
 import serial
+import glob
 
+
+
+#ser = 0
 class GcodeExport(inkex.Effect):
 
 ######## 	Richiamata da _main()
@@ -51,9 +55,6 @@ class GcodeExport(inkex.Effect):
 		self.OptionParser.add_option("-d", "--directory",action="store", type="string", dest="directory", default="/home/",help="Directory for files") ####check_dir
 		self.OptionParser.add_option("-f", "--filename", action="store", type="string", dest="filename", default="-1.0", help="File name")            
 		self.OptionParser.add_option("","--add-numeric-suffix-to-filename", action="store", type="inkbool", dest="add_numeric_suffix_to_filename", default=True,help="Add numeric suffix to filename")            
-		#stream
-		#self.OptionParser.add_option("-d", "--port",action="store", type="int", dest="port", default="1",help="USB Com port")
-		#stream
 		self.OptionParser.add_option("","--bg_color",action="store",type="string",dest="bg_color",default="",help="")
 		self.OptionParser.add_option("","--resolution",action="store", type="int", dest="resolution", default="5",help="") #Usare il valore su float(xy)/resolution e un case per i DPI dell export
 		
@@ -83,8 +84,7 @@ class GcodeExport(inkex.Effect):
 		
 		# Anteprima = Solo immagine BN 
 		self.OptionParser.add_option("","--preview_only",action="store", type="inkbool", dest="preview_only", default=False,help="") 
-		self.OptionParser.add_option("","--stream",action="store", type="inkbool", dest="stream", default=True,help="") 
-
+		self.OptionParser.add_option("","--stream",action="store", type="inkbool", dest="stream", default=False,help="")
 		#inkex.errormsg("BLA BLA BLA Messaggio da visualizzare") #DEBUG
 
 
@@ -152,18 +152,21 @@ class GcodeExport(inkex.Effect):
 			pos_file_png_exported = os.path.join(self.options.directory,self.options.filename+".png") 
 			pos_file_png_BW = os.path.join(self.options.directory,self.options.filename+suffix+"preview.png") 
 			pos_file_gcode = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.txt") 
-			
+			pos_file_log = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.log")			
 
 			#Esporto l'immagine in PNG
 			self.exportPage(pos_file_png_exported,current_file,bg_color)
-
 
 			
 			#DA FARE
 			#Manipolo l'immagine PNG per generare il file Gcode
 			self.PNGtoGcode(pos_file_png_exported,pos_file_png_BW,pos_file_gcode)
-						
-			
+			#list the available ports
+			port = self.serial_ports()
+			#stream the gcode to Gerbil
+			if self.options.stream == True :
+				self.GcodetoController(port,pos_file_gcode,pos_file_log)		
+				# port = self.serial_ports()
 		else:
 			inkex.errormsg("Directory does not exist! Please specify existing directory!")
             
@@ -187,10 +190,8 @@ class GcodeExport(inkex.Effect):
 			DPI = 127
 		elif self.options.resolution == 10:
 			DPI = 254
-		elif self.options.resolution == 15:
-			DPI = 382
 		else:
-			DPI = 382 #254 20 pixels
+			DPI = 381 #254 15 pixels
 
 		command="inkscape -C -e \"%s\" -b\"%s\" %s -d %s" % (pos_file_png_exported,bg_color,current_file,DPI) #Comando da linea di comando per esportare in PNG
 					
@@ -430,7 +431,11 @@ class GcodeExport(inkex.Effect):
 			Laser_ON = False
 			#F_G01 = self.options.speed_ON
 			Scala = self.options.resolution
-
+			#if self.options.resolution == 15:
+			#	F_G01 = 780 #300
+			#elif self.options.resolution == 10:
+			#	F_G01 = 1600 #800
+			#else:
 			F_G01 = self.options.speed_ON
 			
 			file_gcode = open(pos_file_gcode, 'w')  #Creo il file
@@ -440,8 +445,6 @@ class GcodeExport(inkex.Effect):
 			#HOMING
 			file_gcode.write('$X\n')
 			if self.options.homing == 1:
-				file_gcode.write('G28\n')
-			elif self.options.homing == 2:
 				file_gcode.write('$H\n')
 			else:
 				pass
@@ -552,55 +555,186 @@ class GcodeExport(inkex.Effect):
 			
 			#Configure final standard Gcode
 			file_gcode.write(self.options.laseroff + '\n')
+			file_gcode.write('S0\n')
 			file_gcode.write('G0 X0 Y0\n')
 			#HOMING
-			if self.options.homing == 1:
-				file_gcode.write('G28\n')
-			elif self.options.homing == 2:
-				file_gcode.write('$H\n')
-			else:
-				pass
+			# if self.options.homing == 1:
+				# file_gcode.write('$H\n')
+			# else:
+				# pass
 			
 			file_gcode.close() #Close the file
+			
+	def GcodetoController(self,port,pos_file_gcode,pos_file_log):
 		#streaming code start
-	#if self.options.preview_only == True: #Stream the file to K40
-	#	s = serial.Serial()
-    	#	s.baudrate = 115200
-    	#	s.port = 'com' + str(self.options.port)
-	#	l_count = 0
-	#	s.open()
-	#	s.write("$X")
-	#	time.sleep(4)
-	#	s.flushInput()
-	#	with open(pos_file_gcode, 'r') as fh:
-			#inkex.errormsg("streaming...")
-	#		for line in fh:
-	#			l_count += 1 # Iterate line counter    
-	#			l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-	#			#l_block = line.strip() # Strip all EOL characters for consistency
-	#			s.write(l_block + '\n') # Send g-code block to grbl
-	#			#inkex.errormsg(l_block)
-	#			while True:
-	#				grbl_out = s.readline().strip() # Wait for grbl response with carriage return
-	#				if grbl_out.find('ok') < 0 and grbl_out.find('error') < 0 :
-	#					print "\n  Debug: ",grbl_out,
-	#				else : 
-	#					break #pass #break			
-			#streaming code end
 
-		#inkex.errormsg("completed!")
-		#try:
-		#	fh.close() not needed since with command does handle this                           
-        	#except:
-            	#	inkex.errormsg(("Can not write to specified file!"))
-		#	return
-	#	time.sleep(15)
-	#	s.flush()
-	#	if s.isopen() == True:
-	#		s.close()
-	#	else:
-	#		pass return?
+		RX_BUFFER_SIZE = 128 #128
+		BAUD_RATE = 115200
+		ENABLE_STATUS_REPORTS = True
+		REPORT_INTERVAL = 1.0 # seconds
+
+		is_run = True # Controls query timer
+
 		
+		# ser = serial.Serial()
+		# ser.baudrate = 115200
+		# ser.bytesize = serial.EIGHTBITS
+		# ser.parity = serial.PARITY_NONE
+		# ser.stopbits = serial.STOPBITS_ONE
+		#s.timeout = 1
+		# ser.xonxoff = False     #disable software flow control
+		# ser.rtscts = False     #disable hardware (RTS/CTS) flow control
+		# ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
+		#s.writeTimeout = 2
+		# ser.port = 'com13' #(serial.tools.list_ports 0403:6015)	#- 1
+		verbose = False
+		settings_mode = False
+		check_mode = False
+		f = open(pos_file_gcode, 'r')
+		if verbose :
+			log = open(pos_file_log, 'w')			
+		# Initialize
+		s = serial.Serial(port[0],BAUD_RATE)
+		s.writeTimeout = 0.2
+		s.timeout = 0.2	
+		s.flushInput()
+		s.flushOutput()		
+
+		#print "Initializing Grbl..."
+		s.write("\r\n\r\n")
+		# Wait for grbl to initialize and flush startup text in serial input
+		time.sleep(3)
+		s.flushInput()
+		start_time = time.time();
+		# Stream g-code to grbl
+		l_count = 0
+		error_count = 0
+		out_temp = 0
+		g_count = 0
+		c_line = []
+		for line in f:
+			l_count += 1 # Iterate line counter
+			l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+			# l_block = line.strip()
+			c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
+			grbl_out = '' 
+			while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
+				try :
+					out_temp = s.readline().strip() # Wait for grbl response
+					#time.sleep(0.2)
+				except :
+					log.write("\nG-code block read error!")
+					pass
+				if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+					#s.flushInput()
+					if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
+				else :
+					if out_temp.find('error') >= 0 or out_temp == 0 : 
+						error_count += 1
+						log.write("\n Error rate "+ str(error_count))
+					g_count += 1 # Iterate g-code counter
+					if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
+					#if l_block > 0 :
+					if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
+					del c_line[0] # Delete the block character count corresponding to the last 'ok'
+			try:
+				time.sleep(.1)
+				s.write(l_block + '\n') # Send g-code block to grbl
+			except:
+				if verbose : log.write("\nG-code block comm error!")
+				s.close()
+				break
+			if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
+		time.sleep(1)
+		# Wait until all responses have been received.
+		while l_count > g_count :
+			try:
+				out_temp = s.readline(s.inWaiting()).strip() # Wait for grbl response
+			except:
+				if verbose : log.write("\nG-code block read error!")
+				pass
+			if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+				if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
+			else :
+				if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
+				g_count += 1 # Iterate g-code counter
+				if verbose : log.write("\nG-code file finished!")
+				del c_line[0] # Delete the block character count corresponding to the last 'ok'
+				if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
+		# Wait for user input after streaming is completed
+		if verbose : log.write("\nG-code streaming finished!"+ l_block);
+		end_time = time.time();
+		time.sleep(2);
+		is_run = False;
+		try:
+			s.write("\r\n\r\n")
+		except:
+			if verbose : log.write("\n error s.write to gerbil")
+			pass
+		s.reset_input_buffer();
+		if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
+		if check_mode :
+			if error_count > 0 :
+				if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
+			else :
+				if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
+		else :
+		   if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
+		   time.sleep(2);
+		   #s.reset_output_buffer()
+		   #raw_input("  Press <Enter> to exit and disable Grbl.") 
+		try:
+			s.reset_input_buffer()
+			time.sleep(2);
+		except:
+			if verbose : log.write( "Error reset input port.")
+			pass			
+		try:
+			# Close file and serial port
+			#file_gcode.close()
+			f.close()
+		except:
+			if verbose : log.write( "Error close file. "+ f)
+			pass				
+		try:
+			s.close()
+		except:
+			if verbose : log.write( "Error close port.")
+			pass
+		try:
+			log.close()
+		except:
+			if verbose : log.write( "Error close log.")
+			pass
+	
+	def serial_ports(self):
+    # """ Lists serial port names
+
+        # :raises EnvironmentError:
+            # On unsupported or unknown platforms
+        # :returns:
+            # A list of the serial ports available on the system
+    # """
+
+		if sys.platform.startswith('win'):
+			ports = ['COM%s' % (i + 1) for i in range(256)]
+		elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+			# this excludes your current terminal "/dev/tty"
+			ports = glob.glob('/dev/tty[A-Za-z]*')
+		elif sys.platform.startswith('darwin'):
+			ports = glob.glob('/dev/tty.*')
+		else:
+			raise EnvironmentError('Unsupported platform')
+
+		result = []
+		for port in ports:
+			try:
+				s = serial.Serial(port)
+				s.close()
+				result.append(port)
+			except (OSError, serial.SerialException):
+				pass
+		return result
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
 

@@ -3,7 +3,7 @@
 <!--  -->
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
 	<!-- Nome con cui compare l'estensione nel menù, fa casino con gli underscore _ -->
-	<name>K40 Raster2Laser GCode generator</name>
+	<name>Raster 2 Laser GCode generator</name>
 	<!-- il campo ID deve essere univoco  -->
 	<id>com.305engineering.raster2laser_gcode</id>
 	
@@ -16,13 +16,13 @@
 	
 	<!-- Titolo e descrizione -->
 	<param name="Title" type="description">K40 Raster 2 Laser GCode generator</param>
-	<param name="Description" type="description">created by 305 Engineering, modified by Awesome.tech</param>
+	<param name="Description" type="description">created by 305 Engin. and modified By Awesome.tech</param>
     
 	<!-- Opzioni di esportazione dell'immagine -->
 	<param name="directory" type="string"  gui-text="Export directory"></param>
 	<param name="filename" type="string"  gui-text="File Name"></param>
 	<param name="add-numeric-suffix-to-filename" type="boolean" gui-text="Add numeric suffix to filename">true</param>
-	
+
 	<param name="bg_color" type="enum" gui-text="Replace transparency with">
 		<_item value="#ffffff">White</_item>
 		<_item value="#000000">Black</_item>
@@ -71,16 +71,15 @@
 
 	
 	<!-- Velocità Nero e spostamento -->
-	<param name="speed_ON" type="int" min="1" max="5000" gui-text="Engraving speed">1200</param>
+	<param name="speed_ON" type="int" min="1" max="3000" gui-text="Engraving speed">200</param>
 	
 	<!-- FLIP = coordinate Cartesiane (False) Coordinate "informatiche" (True) -->
 	<param name="flip_y" type="boolean" gui-text="Flip Y">false</param>
 
 	<!-- Homing -->
 	<param name="homing" type="enum" gui-text="Homing ?">
-		<_item value="1">G28 (Standard)</_item>
-		<_item value="2">$H (GRBL)</_item>
-		<_item value="3">No Homing</_item>
+		<_item value="1">Yes - $H </_item>
+		<_item value="2">No Homing</_item>
 	</param>
 	
 	<param name="laseron" type="string"  gui-text="Laser ON Command">M4</param>
@@ -89,8 +88,10 @@
 	
 	<!-- Anteprima = Solo immagine BN -->
 	<param name="preview_only" type="boolean" gui-text="Preview only">false</param>
-	<param name="p_only" type="description">If "Preview only" is true the gcode file will not be generated.</param>
-	<param name="stream" type="boolean" gui-text="Stream directly via usb">true</param>
+	<param name="p_only" type="description">If checked the gcode file will not be generated.</param>
+
+	<param name="stream" type="boolean" gui-text="Stream it">false</param>
+	<param name="s_only" type="description">If checked the file will be streamed to Gerbil.</param>
 
 	<!-- Per togliere la casella Antepima diretta bisogna sostituire <effect> con <effect needs-live-preview="false">  -->
 	<!-- <effect> -->
