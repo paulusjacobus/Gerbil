@@ -35,6 +35,7 @@ Select the letter tool from inkscape (Big "A" character icon) tools icons on the
 
 ## Sending it to the Gerbil Controller
 There are two options for sending the generated gcode files to Gerbil: via CNCjs and via streamer.py script.
+Note: Next to this, I have added the gcode streaming feature within each Plugin. This feature is undergoing extensive testing first so beware it is experimental at this stage.
 - Install a G-code sender
 - For example https://github.com/cncjs/cncjs or for simple fast install as desktop app (MAC or Windows) https://github.com/cncjs/cncjs/wiki/Desktop-App
 - Select Grbl as format
