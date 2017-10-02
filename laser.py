@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
-Modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com
+Modified by Awesome.tech 2017 (Serial streaming feature)
+modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com
 modified by Adam Polak 2014, polakiumengineering.org
 
 based on Copyright (C) 2009 Nick Drobchenko, nick@cnc-club.ru
@@ -3080,7 +3081,7 @@ class laser_gcode(inkex.Effect):
 
 		is_run = True # Controls query timer
 
-		verbose = True
+		verbose = False
 		settings_mode = False
 		check_mode = False
 		f = open(pos_file_gcode, 'r')
@@ -3140,7 +3141,7 @@ class laser_gcode(inkex.Effect):
 				s.close()
 				break
 			if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
-		time.sleep(1)
+		# time.sleep(1)
 		# Wait until all responses have been received.
 		while l_count > g_count :
 			try:
