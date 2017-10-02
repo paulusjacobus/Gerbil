@@ -601,7 +601,7 @@ class GcodeExport(inkex.Effect):
 		# ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
 		#s.writeTimeout = 2
 		# ser.port = 'com13' #(serial.tools.list_ports 0403:6015)	#- 1
-		verbose = True
+		verbose = False
 		settings_mode = False
 		check_mode = False
 		f = open(pos_file_gcode, 'r')
