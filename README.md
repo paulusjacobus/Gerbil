@@ -43,6 +43,7 @@ Note: Next to this, I have added the gcode streaming feature within each Plugin.
 - Hit the "Connect" button
 - See whether it responds and click on the clear alarms "Unlock" button (on the top/right of the screen)
 - See if you can jog the machine via the arrows (set the appropriate step size via "custom" into 10 steps per jog command)
+- The jog speed or feed needs to be adjusted for the K40. You do this via the cog wheel next to the "Axis" screen section (on the left/middle). Click on the cog and a menu opens where you can set the max speed to something like 1000 or 1500.
 - Upload a raster or vector file (max 10Mb, although can be changed in code)
 - Hit the "Play" button in the top bar
 - The gcode is now send to Gerbil and you can see the progress on the screen in form of completion and visual movement in the gcode depiction
