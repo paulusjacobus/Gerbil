@@ -3,7 +3,7 @@
 <!--  -->
 <inkscape-extension xmlns="http://www.inkscape.org/namespace/inkscape/extension">
 	<!-- Nome con cui compare l'estensione nel menù, fa casino con gli underscore _ -->
-	<name>Raster 2 Laser GCode generator</name>
+	<name>K40 Raster 2 Laser GCode generator</name>
 	<!-- il campo ID deve essere univoco  -->
 	<id>com.305engineering.raster2laser_gcode</id>
 	
@@ -79,9 +79,12 @@
 	<!-- Homing -->
 	<param name="homing" type="enum" gui-text="Homing ?">
 		<_item value="1">Yes - $H </_item>
-		<_item value="2">No Homing</_item>
+		<_item value="2">Yes - G28</_item>
+		<_item value="3">No Homing</_item>
 	</param>
-	
+	<param name="offset" type="boolean" gui-text="G28 Offset?">false</param>
+	<param name="xoffset" type="float" min="0" max="100" _gui-text="G28 X-Offset (mm or in):">0.0</param>
+	<param name="yoffset" type="float" min="0" max="100" _gui-text="G28 Y-Offset (mm or in):">0.0</param>	
 	<param name="laseron" type="string"  gui-text="Laser ON Command">M4</param>
 	<param name="laseroff" type="string"  gui-text="Laser OFF Command">M5</param>
 
@@ -101,7 +104,7 @@
 		<!-- internal extensions menu -->
 		<!--  " Extension => 305 Engineering => prova_estensione " -->
         <effects-menu>
-            <submenu name="K40 Raster"/>
+            <submenu name="K40 Generate Laser Raster Gcode"/>
         </effects-menu>
     </effect>
     

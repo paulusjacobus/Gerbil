@@ -77,7 +77,13 @@ class GcodeExport(inkex.Effect):
 		
 		# Homing
 		self.OptionParser.add_option("","--homing",action="store", type="int", dest="homing", default="1",help="")
-
+		
+		# G28 Offset
+		self.OptionParser.add_option("","--offset",action="store", type="inkbool", dest="offset", default=False,help="G28 Offset")
+		self.OptionParser.add_option("","--xoffset",action="store", type="string", dest="xoffset", default="0.0", help="X offset from zero")
+		self.OptionParser.add_option("","--yoffset",action="store", type="string", dest="yoffset", default="0.0", help="Y offset from zero")
+		
+		
 		# Commands
 		self.OptionParser.add_option("","--laseron", action="store", type="string", dest="laseron", default="M4", help="")
 		self.OptionParser.add_option("","--laseroff", action="store", type="string", dest="laseroff", default="M5", help="")
@@ -444,10 +450,18 @@ class GcodeExport(inkex.Effect):
 			file_gcode.write('; Generated with:\n; "Grbl compatible Raster2LaserGcode generator"\n; by 305 Engineering and Awesome.tech\n; Modified for K40Controller\n;\n;\n')
 			#HOMING
 			file_gcode.write('$X\n')
+
 			if self.options.homing == 1:
 				file_gcode.write('$H\n')
+			elif self.options.homing == 2:
+				file_gcode.write('G28\n')			
 			else:
 				pass
+			if self.options.offset == True:
+				file_gcode.write('G0 X' + self.options.xoffset + ' Y' + self.options.yoffset + ' \n')
+				#file_gcode.write('G90\n')
+			else:
+				pass		
 			file_gcode.write('G21\n')			
 			file_gcode.write('G90\n')
 			file_gcode.write('G92 X0.0 Y0.0\n')
@@ -587,7 +601,7 @@ class GcodeExport(inkex.Effect):
 		# ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
 		#s.writeTimeout = 2
 		# ser.port = 'com13' #(serial.tools.list_ports 0403:6015)	#- 1
-		verbose = False
+		verbose = True
 		settings_mode = False
 		check_mode = False
 		f = open(pos_file_gcode, 'r')
@@ -604,6 +618,8 @@ class GcodeExport(inkex.Effect):
 		s.write("\r\n\r\n")
 		# Wait for grbl to initialize and flush startup text in serial input
 		time.sleep(3)
+		s.write("$X\n")
+		time.sleep(3)
 		s.flushInput()
 		start_time = time.time();
 		# Stream g-code to grbl
@@ -614,8 +630,8 @@ class GcodeExport(inkex.Effect):
 		c_line = []
 		for line in f:
 			l_count += 1 # Iterate line counter
-			l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-			# l_block = line.strip()
+			#l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+			l_block = line.strip()
 			c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
 			grbl_out = '' 
 			while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
@@ -638,18 +654,18 @@ class GcodeExport(inkex.Effect):
 					if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
 					del c_line[0] # Delete the block character count corresponding to the last 'ok'
 			try:
-				time.sleep(.1)
+				#time.sleep(.1)
 				s.write(l_block + '\n') # Send g-code block to grbl
 			except:
 				if verbose : log.write("\nG-code block comm error!")
 				s.close()
 				break
 			if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
-		time.sleep(1)
+		#time.sleep(1)
 		# Wait until all responses have been received.
 		while l_count > g_count :
 			try:
-				out_temp = s.readline(s.inWaiting()).strip() # Wait for grbl response
+				out_temp = s.readline().strip() # Wait for grbl response
 			except:
 				if verbose : log.write("\nG-code block read error!")
 				pass
@@ -666,12 +682,12 @@ class GcodeExport(inkex.Effect):
 		end_time = time.time();
 		time.sleep(2);
 		is_run = False;
-		try:
-			s.write("\r\n\r\n")
-		except:
-			if verbose : log.write("\n error s.write to gerbil")
-			pass
-		s.reset_input_buffer();
+		# try:
+			# s.write("\r\n\r\n")
+		# except:
+			# if verbose : log.write("\n error s.write to gerbil")
+			# pass
+		#s.reset_input_buffer();
 		if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
 		if check_mode :
 			if error_count > 0 :
