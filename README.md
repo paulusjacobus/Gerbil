@@ -55,7 +55,9 @@ Caveat for cncjs: files can be not large unless you change the source code to al
 
 Potentially the python script will run because you installed Inkscape which is build on Python. I had mixed experiences with this (one laptop did while the other didn't).
 You might need to have Python installed on your machine to use it via the command line.
-Use https://www.python.org/downloads/ to download and install Python separately, if you run into issues where the computer MAC or Wnndows cannot execute the py script from the command line tool.
+Use https://www.python.org/downloads/ to download and install Python separately, if you run into issues where the computer MAC or Windows cannot execute the py script from the command line tool.
+Inkscape itself comes with a Python install inside the Inkscape folder. Using the environment path settings in Windows, you should be able to used that as well.
+Install Inkscape 0.92.0 32 bits not 0.92.2 (buggy) or 64 bits(does work well will some Python liberaries like PySerial)
 
 
 Cmd Streamer.py <name_of_the_file> <connectedcomport>
