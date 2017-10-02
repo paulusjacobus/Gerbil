@@ -3087,7 +3087,7 @@ class laser_gcode(inkex.Effect):
 		f = open(pos_file_gcode, 'r')
 		if verbose :
 			log = open(pos_file_log, 'w')			
-		# Initialize
+		# Initialize, we choose the first of available ports!
 		s = serial.Serial(port[0],BAUD_RATE)
 		s.writeTimeout = 0.2
 		s.timeout = 0.2	
@@ -3100,7 +3100,7 @@ class laser_gcode(inkex.Effect):
 		time.sleep(2)
 		s.write("$X\n")
 		time.sleep(2)
-		#s.flushInput()
+		s.flushInput()
 		start_time = time.time();
 		# Stream g-code to grbl
 		l_count = 0
@@ -3117,7 +3117,7 @@ class laser_gcode(inkex.Effect):
 			while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
 				try :
 					out_temp = s.readline().strip() # Wait for grbl response
-					#time.sleep(0.2)
+					#time.sleep(0.2) debug stuff
 				except :
 					if verbose : log.write("\nG-code block read error!")
 					pass
@@ -3134,7 +3134,7 @@ class laser_gcode(inkex.Effect):
 					if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
 					del c_line[0] # Delete the block character count corresponding to the last 'ok'
 			try:
-				time.sleep(.1)
+				# time.sleep(.1) debug stuff
 				s.write(l_block + '\n') # Send g-code block to grbl
 			except:
 				if verbose : log.write("\nG-code block comm error!")
@@ -3157,7 +3157,7 @@ class laser_gcode(inkex.Effect):
 				if verbose : log.write("\nG-code file finished!")
 				del c_line[0] # Delete the block character count corresponding to the last 'ok'
 				if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
-		# Wait for user input after streaming is completed
+		# Wait for streaming completed
 		if verbose : log.write("\nG-code streaming finished!"+ l_block);
 		end_time = time.time();
 		time.sleep(2);
@@ -3176,12 +3176,12 @@ class laser_gcode(inkex.Effect):
 				if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
 		else :
 		   if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
-		   time.sleep(2);
+		   time.sleep(2)
 		   #s.reset_output_buffer()
 		   #raw_input("  Press <Enter> to exit and disable Grbl.") 
 		try:
 			s.reset_input_buffer()
-			time.sleep(2);
+			time.sleep(2)
 		except:
 			if verbose : log.write( "Error reset input port.")
 			pass			
@@ -3209,7 +3209,7 @@ class laser_gcode(inkex.Effect):
         # :raises EnvironmentError:
             # On unsupported or unknown platforms
         # :returns:
-            # A list of the serial ports available on the system
+            # A list of the serial ports available on the system (we choose the first one available)
     # """
 		#global serial
 		if sys.platform.startswith('win'):
