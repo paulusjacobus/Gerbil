@@ -454,10 +454,10 @@ class GcodeExport(inkex.Effect):
 			if self.options.homing == 1:
 				file_gcode.write('$H\n')
 			elif self.options.homing == 2:
-				file_gcode.write('G28\n')			
+				file_gcode.write('$H\n')			
 			else:
 				pass
-			if self.options.offset == True:
+			if (self.options.offset == True) and (self.options.homing == 2):
 				file_gcode.write('G0 X' + self.options.xoffset + ' Y' + self.options.yoffset + ' \n')
 				#file_gcode.write('G90\n')
 			else:
