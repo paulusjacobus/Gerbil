@@ -78,7 +78,7 @@ class GcodeExport(inkex.Effect):
 		# Homing
 		self.OptionParser.add_option("","--homing",action="store", type="int", dest="homing", default="1",help="")
 		
-		# G28 Offset
+		# G0 Offset
 		self.OptionParser.add_option("","--offset",action="store", type="inkbool", dest="offset", default=False,help="G28 Offset")
 		self.OptionParser.add_option("","--xoffset",action="store", type="string", dest="xoffset", default="0.0", help="X offset from zero")
 		self.OptionParser.add_option("","--yoffset",action="store", type="string", dest="yoffset", default="0.0", help="Y offset from zero")
