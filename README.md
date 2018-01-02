@@ -16,6 +16,11 @@ Engraving settings for 256 Gray levels:
 
 Once the laser head starts sputtering then you know you are driving your controller too hard and you should reduce its speed.
 
+## Set Inkscape import resolution:
+The import a picture from the File function from the Import menu uses a default import resolution of 96 dpi. So that reduces your pictures to 96 dpi. To change that:
+- Open the preferences in the edit menu (Shift + Control + p). 
+- Select Bitmaps and change the default import resolution to 381 dpi
+
 ## Using the Raster Engraving plugin:
 - Import a picture from the File, Import menu
 - Scale (resize) the canvas in Inkscape to the dimensions of the engraving area you need via "Document properties" ("resize page to content" feature allows you to do this automatically). So, basically your A4 resizes to the engraving size.
