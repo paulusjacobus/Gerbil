@@ -443,7 +443,7 @@ class GcodeExport(inkex.Effect):
 			#	F_G01 = 1600 #800
 			#else:
 			F_G01 = self.options.speed_ON
-			F_G00 = 3 * F_G01
+			F_G00 = 3 * F_G01 #travel speed to skip the white space
 			file_gcode = open(pos_file_gcode, 'w')  #Creo il file
 			
 			#Configurazioni iniziali standard Gcode
