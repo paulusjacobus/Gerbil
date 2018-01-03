@@ -411,7 +411,8 @@ class GcodeExport(inkex.Effect):
 						if matrice[y][x] >= 254:
 							matrice_BN[y][x] == 255
 						
-						if matrice[y][x] > 1 and matrice[y][x] <254:
+						if matrice[y][x] >= 0 and matrice[y][x] <254:
+						#if matrice[y][x] > 1 and matrice[y][x] <254:
 							matrice_BN[y][x] = ( matrice[y][x] // self.options.grayscale_resolution ) * self.options.grayscale_resolution
 						
 			
