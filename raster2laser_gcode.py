@@ -2,7 +2,7 @@
 # ----------------------------------------------------------------------------
 # Copyright (C) 2014 305engineering <305engineering@gmail.com>
 # Original concept by 305engineering.
-# Adapted for Grbl Arduino Uno K40 Laser Controller
+# Adapted for Grbl Arduino Gerbil K40 Laser Controller by Awesome.tech
 # "THE MODIFIED BEER-WARE LICENSE" (Revision: my own :P):
 # <305engineering@gmail.com> wrote this file. As long as you retain this notice you
 # can do whatever you want with this stuff (except sell). If we meet some day, 
@@ -10,6 +10,12 @@
 #
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
+#
+# Awesome.Tech modifications:
+# Increase resolution to 381 dpi
+# Added skipping white space
+# Added G-code streaming via serial port
+# Modified G-code to conform with Grbl firmware G-code standards
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
