@@ -592,18 +592,6 @@ class GcodeExport(inkex.Effect):
 
 		is_run = True # Controls query timer
 
-		
-		# ser = serial.Serial()
-		# ser.baudrate = 115200
-		# ser.bytesize = serial.EIGHTBITS
-		# ser.parity = serial.PARITY_NONE
-		# ser.stopbits = serial.STOPBITS_ONE
-		#s.timeout = 1
-		# ser.xonxoff = False     #disable software flow control
-		# ser.rtscts = False     #disable hardware (RTS/CTS) flow control
-		# ser.dsrdtr = False       #disable hardware (DSR/DTR) flow control
-		#s.writeTimeout = 2
-		# ser.port = 'com13' #(serial.tools.list_ports 0403:6015)	#- 1
 		verbose = False
 		settings_mode = False
 		check_mode = False
@@ -642,7 +630,7 @@ class GcodeExport(inkex.Effect):
 					out_temp = s.readline().strip() # Wait for grbl response
 					#time.sleep(0.2)
 				except :
-					log.write("\nG-code block read error!")
+					if verbose : log.write("\nG-code block read error!")
 					pass
 				if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
 					#s.flushInput()
@@ -734,26 +722,28 @@ class GcodeExport(inkex.Effect):
         # :returns:
             # A list of the serial ports available on the system
     # """
+		try:
+			if sys.platform.startswith('win'):
+				ports = ['COM%s' % (i + 1) for i in range(256)]
+			elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+				# this excludes your current terminal "/dev/tty"
+				ports = glob.glob('/dev/tty[A-Za-z]*')
+			elif sys.platform.startswith('darwin'):
+				ports = glob.glob('/dev/tty.*')
+			else:
+				raise EnvironmentError('Unsupported platform')
 
-		if sys.platform.startswith('win'):
-			ports = ['COM%s' % (i + 1) for i in range(256)]
-		elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-			# this excludes your current terminal "/dev/tty"
-			ports = glob.glob('/dev/tty[A-Za-z]*')
-		elif sys.platform.startswith('darwin'):
-			ports = glob.glob('/dev/tty.*')
-		else:
-			raise EnvironmentError('Unsupported platform')
-
-		result = []
-		for port in ports:
-			try:
-				s = serial.Serial(port)
-				s.close()
-				result.append(port)
-			except (OSError, serial.SerialException):
-				pass
-		return result
+			result = []
+			for port in ports:
+				try:
+					s = serial.Serial(port)
+					s.close()
+					result.append(port)
+				except (OSError, serial.SerialException):
+					pass
+			return result
+		except IOError:
+			exit
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
 
