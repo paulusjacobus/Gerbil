@@ -740,6 +740,7 @@ class GcodeExport(inkex.Effect):
 					s.close()
 					result.append(port)
 				except (OSError, serial.SerialException):
+					inkex.errormsg("Unable to stream %  via USB port. Unplug/plugin USB cable" % (self.options.filename))
 					pass
 			return result
 		except IOError:
