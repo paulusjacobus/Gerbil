@@ -43,6 +43,7 @@ import random
 import gettext
 _ = gettext.gettext
 import serial
+import errno
 
 ### Check if inkex has errormsg (0.46 version doesnot have one.) Could be removed later.
 if "errormsg" not in dir(inkex):
@@ -2411,6 +2412,12 @@ class laser_gcode(inkex.Effect):
         gcode_pass = gcode
         for x in range(1,self.options.passes):
             gcode += "G91\nG1 Z-" + self.options.pass_depth + "\nG90\n" + gcode_pass
+        if not os.path.exists(os.path.dirname(self.options.file)):
+        try:
+            os.makedirs(os.path.dirname(self.options.file))
+        except OSError as exc: # Guard against race condition
+        if exc.errno != errno.EEXIST:
+            raise
         f = open(self.options.directory+self.options.file, "w")
         f.write(self.options.laser_off_command + " S0" + "\n" + self.header + "G1 F" + self.options.travel_speed + "\n" + gcode + self.footer)
         f.close()
