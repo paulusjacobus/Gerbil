@@ -1,0 +1,20 @@
+The Work Coordinates option can be used to define the starting X and Y positions for your engraving
+and the home position to return to when the engraving finishes.
+
+For example, if you set G54 to X0 Y0 with G10 L2 P1 X0 Y0 Z0
+		    and G55 to X10 Y5 with G10 L2 P2 X10 Y5 Z0
+	     your engraving will begin at X10 Y5 and return to X0 Y0 at end of job.
+
+G56 - G59 work the same way.  You must set the G54 - G59 values hourself with a tool like cncjs and 
+they remain in effect until you change them to different values.
+
+G54 - G59 changes are stored in EEPROM and are subject to the 10,000 writes limitation so use only
+as often as necessary.  Using these values in the raster2laser extension does not change the EEPROM
+so they can be used as often as you wish once they are set outside of the extension.
+
+The X and Y offset option can be used to create margins around your engraving.  For example, if yourimage dimensions are height=85mm, width=130mm and your work piece dimensions are height=95mm,
+width=150mm you can set the offsets as X5 and Y5 which will give you a 5mm border around your 
+engraving.  Simply divide the differences in height and width by 2 to get your offset.
+
+When Work Coordinates is in effect, the X and Y offset option is ignored so they can not be used
+together.

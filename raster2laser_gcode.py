@@ -2,7 +2,8 @@
 # ----------------------------------------------------------------------------
 # Copyright (C) 2014 305engineering <305engineering@gmail.com>
 # Original concept by 305engineering.
-# Adapted for Grbl Arduino Gerbil K40 Laser Controller by Awesome.tech
+# Adapted for Grbl Arduino Uno K40 Laser Controller
+# awesome.tech
 # "THE MODIFIED BEER-WARE LICENSE" (Revision: my own :P):
 # <305engineering@gmail.com> wrote this file. As long as you retain this notice you
 # can do whatever you want with this stuff (except sell). If we meet some day, 
@@ -10,12 +11,6 @@
 #
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
-#
-# Awesome.Tech modifications:
-# Increase resolution to 381 dpi
-# Added skipping white space
-# Added G-code streaming via serial port
-# Modified G-code to conform with Grbl firmware G-code standards
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 # EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -25,6 +20,20 @@
 # ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 # CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# ----------------------------------------------------------------------------
+#Change Log
+#
+#DRG1 - fixed streaking issue when using greyscale
+#       added option to modify $30 values
+#       Added option to offset from true home at start of engrave
+#DRG2 - eliminate negative PWM values
+#       added slider to set whitespace bypass speed (from 1000-10000)
+#DRG3 - fixed an issue where minimum PWM was not tested resulting in whitestace bypass was not engaged
+#       added a slider for minimum PWM value (from 30-100)
+#       added this change log
+#DRG4 - added return to orig home when x and y offset are in effect
+#DRG5 - Added output text file containing parms used for this extension
+#DRG6 - Added G54-G59 workspace coordinates
 # ----------------------------------------------------------------------------
 '''
 
@@ -47,7 +56,7 @@ import time
 import serial
 import glob
 
-
+import datetime #DRG5
 
 #ser = 0
 class GcodeExport(inkex.Effect):
@@ -73,35 +82,57 @@ class GcodeExport(inkex.Effect):
 		
 		# Opzioni modalita 
 		self.OptionParser.add_option("","--BW_threshold",action="store", type="int", dest="BW_threshold", default="128",help="") 
+		self.OptionParser.add_option("","--BWBlackvalue",action="store", type="int", dest="BWBlackvalue", default="254",help="") 
+		self.OptionParser.add_option("","--Grey_multiplier",action="store", type="float", dest="Grey_multiplier", default="1.0",help="") 
+		self.OptionParser.add_option("","--Grey_offset",action="store", type="int", dest="Grey_offset", default="0",help="") 
 		self.OptionParser.add_option("","--grayscale_resolution",action="store", type="int", dest="grayscale_resolution", default="1",help="") 
 		
 		#Velocita Nero e spostamento
-		self.OptionParser.add_option("","--speed_ON",action="store", type="int", dest="speed_ON", default="200",help="") 
+		self.OptionParser.add_option("","--speed_ON",action="store", type="int", dest="speed_ON", default="200",help="")
+		self.OptionParser.add_option("", "--speedupmsg",action="store", type="string", dest="speedupmsg", default="",help="Acceleration for bupassing whitespace msg") #DRG2
+		self.OptionParser.add_option("","--speedup",action="store", type="string", dest="speedup", default="3000",help="") #DRG2
+		self.OptionParser.add_option("", "--minPWMmsg",action="store", type="string", dest="minPWMmsg", default="",help="Acceleration for bypassing whitespace msg") #DRG3
+		self.OptionParser.add_option("","--minPWM",action="store", type="int", dest="minPWM", default="70",help="") #DRG3
+
+                # $30 Value  DRG1
+		self.OptionParser.add_option("","--30_Value",action="store", type="int", dest="PWM_Value", default="1000",help="$30 value") #DRG1
+		self.OptionParser.add_option("","--change30",action="store", type="inkbool", dest="change30", default=False,help="whether to send $30") #DRG1
+		self.OptionParser.add_option("", "--30warn",action="store", type="string", dest="set30", default="30warn",help="$30 caution message will be modified below") #DRG1
+		self.OptionParser.add_option("", "--tab",action="store", type="string", dest="tab", default="/page_1/",help="The active tab when Apply was pressed") #DRG1
 
 		# Mirror Y
 		self.OptionParser.add_option("","--flip_y",action="store", type="inkbool", dest="flip_y", default=False,help="")
 		
 		# Homing
 		self.OptionParser.add_option("","--homing",action="store", type="int", dest="homing", default="1",help="")
+
+		# G54 - G59 Workspace Coordinates DRG5
+		self.OptionParser.add_option("","--g54_value",action="store", type="int", dest="g54_value", default="0",help="Workspace Coordinates") #DRG5
+		self.OptionParser.add_option("", "--g54_msg",action="store", type="string", dest="g54_msg", default="g54_msg",help="G54 message")  #DRG5
+
 		
-		# G0 Offset
-		self.OptionParser.add_option("","--offset",action="store", type="inkbool", dest="offset", default=False,help="G28 Offset")
+		# Offset
+		self.OptionParser.add_option("","--offset",action="store", type="inkbool", dest="offset", default=False,help="Offset")
+		self.OptionParser.add_option("", "--offsetd",action="store", type="string", dest="offsetd", default="offsetd",help="Offset description")  #DRG1
 		self.OptionParser.add_option("","--xoffset",action="store", type="string", dest="xoffset", default="0.0", help="X offset from zero")
 		self.OptionParser.add_option("","--yoffset",action="store", type="string", dest="yoffset", default="0.0", help="Y offset from zero")
 		
 		
 		# Commands
 		self.OptionParser.add_option("","--laseron", action="store", type="string", dest="laseron", default="M4", help="")
-		self.OptionParser.add_option("","--laseroff", action="store", type="string", dest="laseroff", default="M5", help="")
+		self.OptionParser.add_option("","--laseroff", action="store", type="string", dest="laseroff", default="M3", help="")
 		
 		# Anteprima = Solo immagine BN 
 		self.OptionParser.add_option("","--preview_only",action="store", type="inkbool", dest="preview_only", default=False,help="") 
 		self.OptionParser.add_option("","--stream",action="store", type="inkbool", dest="stream", default=False,help="")
+		self.OptionParser.add_option("","--streaming",action="store", type="string", dest="streaming", default="1",help="")
 		#inkex.errormsg("BLA BLA BLA Messaggio da visualizzare") #DEBUG
 
-
-		
-		
+		global run_start_time #DRG5
+		run_start_time = time.strftime('%X %x') #DRG5
+		global begin_time #DRG5
+		begin_time = time.time() #DRG5
+          
 ######## 	Richiamata da __init__()
 ########	Qui si svolge tutto
 	def effect(self):
@@ -109,6 +140,7 @@ class GcodeExport(inkex.Effect):
 
 		current_file = self.args[-1]
 		bg_color = self.options.bg_color
+		
 		
 		
 		##Implementare check_dir
@@ -164,7 +196,9 @@ class GcodeExport(inkex.Effect):
 			pos_file_png_exported = os.path.join(self.options.directory,self.options.filename+".png") 
 			pos_file_png_BW = os.path.join(self.options.directory,self.options.filename+suffix+"preview.png") 
 			pos_file_gcode = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.txt") 
-			pos_file_log = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.log")			
+			pos_file_log = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.log")
+			pos_file_parms = os.path.join(self.options.directory,self.options.filename+suffix+"parms.txt") #DRG5			
+						
 
 			#Esporto l'immagine in PNG
 			self.exportPage(pos_file_png_exported,current_file,bg_color)
@@ -174,15 +208,22 @@ class GcodeExport(inkex.Effect):
 			#Manipolo l'immagine PNG per generare il file Gcode
 			self.PNGtoGcode(pos_file_png_exported,pos_file_png_BW,pos_file_gcode)
 			#list the available ports
-			port = self.serial_ports()
+			#port = self.serial_ports()
 			#stream the gcode to Gerbil
-			if self.options.stream == True :
-				self.GcodetoController(port,pos_file_gcode,pos_file_log)		
-				# port = self.serial_ports()
+			if self.options.streaming == "3" :
+				try:
+					port = self.serial_ports()
+					flag = True
+				except:
+					inkex.errormsg(_("No Serial port found with controller " ) )
+					flag = False
+				if flag == True : 
+					self.GcodetoController(port,pos_file_gcode,pos_file_log,pos_file_parms) #DRG5
 		else:
 			inkex.errormsg("Directory does not exist! Please specify existing directory!")
-            
 
+	
+		
             
             
 ########	ESPORTA L IMMAGINE IN PNG		
@@ -226,7 +267,6 @@ class GcodeExport(inkex.Effect):
 		
 		w, h, pixels, metadata = reader.read_flat()
 		
-		
 		#matrice = [[255 for i in range(w)]for j in range(h)]  #List al posto di un array
 		matrice = [[382 for i in range(w)]for j in range(h)] 
 
@@ -238,7 +278,7 @@ class GcodeExport(inkex.Effect):
 			for y in range(h): # y varia da 0 a h-1
 				for x in range(w): # x varia da 0 a w-1
 					pixel_position = (x + y * w)*4 if metadata['alpha'] else (x + y * w)*3
-					matrice[y][x] = int(pixels[pixel_position]*0.21 + pixels[(pixel_position+1)]*0.71 + pixels[(pixel_position+2)]*0.07)
+					matrice[y][x] = int(pixels[pixel_position]*0.21 + pixels[(pixel_position+1)]*0.71 + pixels[(pixel_position+2)]*0.07) #matrice[y][x] = int(pixels[pixel_position]*0.21 + pixels[(pixel_position+1)]*0.71 + pixels[(pixel_position+2)]*0.07)
 		
 		elif self.options.grayscale_type == 2:
 			#(R+G+B)/3
@@ -291,7 +331,7 @@ class GcodeExport(inkex.Effect):
 		######## GENERO IMMAGINE IN BIANCO E NERO ########
 		#Scorro matrice e genero matrice_BN
 		B=255
-		N=0 
+		N=255-self.options.BWBlackvalue
 		
 		matrice_BN = [[255 for i in range(w)]for j in range(h)]
 		
@@ -411,16 +451,15 @@ class GcodeExport(inkex.Effect):
 			else:
 				for y in range(h): 
 					for x in range(w): 
-						if matrice[y][x] <= 1:
+						if matrice[y][x] <= 0:
 							matrice_BN[y][x] == 0
 							
-						if matrice[y][x] >= 254:
+						if matrice[y][x] >= 255:
 							matrice_BN[y][x] == 255
 						
-						if matrice[y][x] >= 0 and matrice[y][x] <254:
-						#if matrice[y][x] > 1 and matrice[y][x] <254:
+						if matrice[y][x] >= 0 and matrice[y][x] <255:
 							matrice_BN[y][x] = ( matrice[y][x] // self.options.grayscale_resolution ) * self.options.grayscale_resolution
-						
+							#matrice_BN[y][x] = (( matrice_BN[y][x] - 70 ) * 1.3)
 			
 			
 		####Ora matrice_BN contiene l'immagine in Bianco (255) e Nero (0)
@@ -434,7 +473,7 @@ class GcodeExport(inkex.Effect):
 
 
 		#### GENERO IL FILE GCODE ####
-		if self.options.preview_only == False: #Genero Gcode solo se devo
+		if self.options.streaming != "1": #Genero Gcode solo se devo
 		
 			if self.options.flip_y == False: #Inverto asse Y solo se flip_y = False     
 				#-> coordinate Cartesiane (False) Coordinate "informatiche" (True)
@@ -444,35 +483,53 @@ class GcodeExport(inkex.Effect):
 			Laser_ON = False
 			#F_G01 = self.options.speed_ON
 			Scala = self.options.resolution
-			#if self.options.resolution == 15:
-			#	F_G01 = 780 #300
-			#elif self.options.resolution == 10:
-			#	F_G01 = 1600 #800
-			#else:
+
 			F_G01 = self.options.speed_ON
-			F_G00 = 3 * F_G01 #travel speed to skip the white space
+			F_G00 = self.options.speedup #acceleration to bypass whitespace DRG2
+			#DRG2 F_G00 = '3000' #travel speed
+			S_PWM = '0'  #DRG2
 			file_gcode = open(pos_file_gcode, 'w')  #Creo il file
 			
 			#Configurazioni iniziali standard Gcode
 			file_gcode.write('; Generated with:\n; "Grbl compatible Raster2LaserGcode generator"\n; by 305 Engineering and Awesome.tech\n; Modified for K40Controller\n;\n;\n')
 			#HOMING
-			file_gcode.write('$X\n')
+			file_gcode.write('$X\n')			
 
 			if self.options.homing == 1:
 				file_gcode.write('$H\n')
 			elif self.options.homing == 2:
-				file_gcode.write('$H\n')			
+				file_gcode.write('G0 X0 Y0\n')			
 			else:
 				pass
-			if (self.options.offset == True) and (self.options.homing == 2):
-				file_gcode.write('G0 X' + self.options.xoffset + ' Y' + self.options.yoffset + ' \n')
+
+			if self.options.g54_value != 0: #DRG6
+				if self.options.g54_value == 1: #DRG6
+					file_gcode.write('G55 G0 X0 Y0 \n') #DRG6
+				elif self.options.g54_value == 2: #DRG6
+					file_gcode.write('G56 G0 X0 Y0 \n') #DRG6
+				elif self.options.g54_value == 3: #DRG6
+					file_gcode.write('G57 G0 X0 Y0 \n') #DRG6
+				elif self.options.g54_value == 4: #DRG6
+					file_gcode.write('G58 G0 X0 Y0 \n') #DRG6
+				elif self.options.g54_value == 5: #DRG6
+					file_gcode.write('G59 G0 X0 Y0 \n') #DRG6
+			else: #DRG6
+				if self.options.offset == True: #DRG6
+					file_gcode.write('G0 X+' + self.options.xoffset + ' Y+' + self.options.yoffset + '\n') #DRG1 DRG4 DRG6
+				#DRG1 file_gcode.write('G0 X-' + self.options.xoffset + ' Y-' + self.options.yoffset + ' \n')
 				#file_gcode.write('G90\n')
-			else:
-				pass		
+				else: #DRG6
+					pass #DRG6
+			if self.options.change30 == True:  #DRG1
+				self.options.set30=('$30=' + str(self.options.PWM_Value) +'\n')  #DRG1				
+			else:  #DRG1
+				self.options.set30 = 'S0\n'	#DRG1	
 			file_gcode.write('G21\n')			
 			file_gcode.write('G90\n')
 			file_gcode.write('G92 X0.0 Y0.0\n')
-			file_gcode.write(self.options.laseron +'\n')							
+			file_gcode.write(self.options.laseron +'\n')
+			
+			#file_gcode.write(self.options.set30)  #DRG1 Temp debug code
 	
 			#Creazione del Gcode
 			
@@ -524,62 +581,110 @@ class GcodeExport(inkex.Effect):
 				for y in range(h):
 					if y % 2 == 0 :
 						for x in range(w):
+							S_PWM = self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])  #DRG2
+							if S_PWM > 0:  #DRG2
+								pass  #DRG2
+							elif S_PWM == 0:  #DRG2
+								pass  #DRG2
+							else:  #DRG2
+								S_PWM = 0  #DRG2
 							if matrice_BN[y][x] != B :
 								if Laser_ON == False :
-									file_gcode.write('G0 X' + str(round((float(x)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G00) + '\n')
-									#file_gcode.write('G0 X' + str(round((float(x)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2)) + '\n') #' S' + str(255 - matrice_BN[y][x]) +'\n')
+									#Y axis move, no lasering
+									file_gcode.write('G0 X' + str(round((float(x)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2))  + ' F' + str(F_G00) + ' S0' + '\n') #DRG1
+									#DRG1 file_gcode.write('G1 X' + str(round((float(x)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2))  + ' F' + str(F_G00) + '\n')
 									#file_gcode.write(self.options.laseron + '\n')
 									Laser_ON = True
 									
 								if  Laser_ON == True :   #DEVO evitare di uscire dalla matrice
-									if x == w-1 : #controllo fine riga
-										file_gcode.write('G1X' + tr(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G01) + '\n')
+									if x == w-1 : #end of line check stop lasering
+										file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G01) + ' S' + str(S_PWM) + '\n') #DRG3
+										#DRG1 file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G00) + '\n')
 										#file_gcode.write(self.options.laseroff + '\n')
 										Laser_ON = False
 										
 									else: 
-										if matrice_BN[y][x+1] == B :
-											file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(255 - matrice_BN[y][x]) +'\n')
-											#file_gcode.write('G1 X' + str(round((float(x+1)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) +'\n')
-											#file_gcode.write(self.options.laseroff + '\n')
-											Laser_ON = False
-											
+										if matrice_BN[y][x+1] == B:
+											if S_PWM >= self.options.minPWM: #DRG3
+												file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(S_PWM) +'\n') #DRG2 #DRG3
+												Laser_ON = False #DRG3
+												#DRG2 file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') #was x+1
+												#file_gcode.write(self.options.laseron + '\n')                                                                                          
+											else:
+												file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S0' +'\n') #DRG2 #DRG3
+												Laser_ON = False #DRG3
+												#DRG1 else : file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') #was x+1
+												#file_gcode.write(self.options.laseron + '\n')                                                                                                                                                                               
 										elif matrice_BN[y][x] != matrice_BN[y][x+1] :
-											file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(255 - matrice_BN[y][x]) +'\n') #was x+1
-											#file_gcode.write(self.options.laseron + '\n')												
-
+											if S_PWM >= self.options.minPWM: #DRG3
+												file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(S_PWM) +'\n') #DRG2 #DRG3
+												#DRG2 file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') #was x+1
+												#file_gcode.write(self.options.laseron + '\n')												
+											else:
+												file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S0' +'\n') #DRG1 ##DRG3
+												#DRG1 else : file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') #was x+1
+												#file_gcode.write(self.options.laseron + '\n')
+											
 					
 					else:
 						for x in reversed(range(w)):
+							S_PWM = self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])  #DRG2
+							if S_PWM > 0:  #DRG2
+								pass  #DRG2
+							elif S_PWM == 0:  #DRG2
+								pass  #DRG2
+							else:  #DRG2
+								S_PWM = 0  #DRG2
 							if matrice_BN[y][x] != B :
 								if Laser_ON == False :
-									file_gcode.write('G0 X' + str(round((float(x+1)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G00) + ' \n')
-									#file_gcode.write('G0 X' + str(round((float(x+1)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2)) + ' \n') #' S' + '\n' + str(255 - matrice_BN[y][x]) +'\n')
+									#Y axis move no lavering
+									file_gcode.write('G0X' + str(round((float(x+1)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2))  + ' F' + str(F_G00) + ' S0' + '\n') #DRG1 #DRG3
+									#DRG1 file_gcode.write('G1 X' + str(round((float(x+1)/Scala),2)) + ' Y' + str(round((float(y)/Scala),2))  + ' F' + str(F_G00) + ' \n')
 									#file_gcode.write(self.options.laseron +'\n')
 									Laser_ON = True
 									
 								if  Laser_ON == True :   #DEVO evitare di uscire dalla matrice
-									if x == 0 : #controllo fine riga ritorno
-										file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G01) + '\n')
+									if x == 0 : #return line end check stop lasering
+										file_gcode.write('G0X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G00) + ' S0' + '\n') #DRG1
+										#DRG1 file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) +' F' + str(F_G01) + '\n')
 										#file_gcode.write(self.options.laseroff + '\n')
 										Laser_ON = False
 										
 									else: 
-										if matrice_BN[y][x-1] == B :
-											file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) +'\n')
-											#file_gcode.write(self.options.laseroff + '\n')
-											Laser_ON = False
-											
+										if matrice_BN[y][x-1] == B:
+											if S_PWM >= self.options.minPWM: #DRG3
+												file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(S_PWM) + '\n') #DRG2 #DRG3
+												Laser_ON = False #DRG3
+												#drg2 file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') # was x-1
+												#file_gcode.write(self.options.laseron +'\n')												
+											else:
+												file_gcode.write('G1X' + str(round((float(x+1)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S0' +'\n') #DRG2 #DRG3
+												Laser_ON = False #DRG3
+												#DRG1 else : file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') # was x-1
+												#file_gcode.write(self.options.laseron +'\n')
+																																		
 										elif  matrice_BN[y][x] != matrice_BN[y][x-1] :
-											file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(255 - matrice_BN[y][x]) +'\n') # was x-1
-											#file_gcode.write(self.options.laseron +'\n')
-
+											if S_PWM >= self.options.minPWM: #DRG3
+												file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(S_PWM) + '\n') #DRG2 #DRG3
+												#drg2 file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G01) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') # was x-1
+												#file_gcode.write(self.options.laseron +'\n')
+												
+											else:
+												file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S0' +'\n') #DRG1 #DRG3
+												#DRG1 else : file_gcode.write('G1X' + str(round((float(x)/Scala),2)) + 'Y' + str(round((float(y)/Scala),2)) + ' F' + str(F_G00) + ' S' + str(self.options.Grey_multiplier*(255 + self.options.Grey_offset - matrice_BN[y][x])) +'\n') # was x-1
+												#file_gcode.write(self.options.laseron +'\n')
+											
 			
 			
 			#Configure final standard Gcode
 			file_gcode.write(self.options.laseroff + '\n')
 			file_gcode.write('S0\n')
-			file_gcode.write('G0 X0 Y0\n')
+			if self.options.g54_value != 0: #DRG6
+				file_gcode.write('G54 G0 X0 Y0') #DRG6
+			elif self.options.offset == True: #DRG4 DRG6
+				file_gcode.write('G0 X-' + self.options.xoffset + ' Y-' + self.options.yoffset + '\n') #DRG4 DRG6
+			else: #DRG4 DRG6
+				file_gcode.write('G0 X0 Y0\n') #DRG4
 			#HOMING
 			# if self.options.homing == 1:
 				# file_gcode.write('$H\n')
@@ -588,7 +693,7 @@ class GcodeExport(inkex.Effect):
 			
 			file_gcode.close() #Close the file
 			
-	def GcodetoController(self,port,pos_file_gcode,pos_file_log):
+	def GcodetoController(self,port,pos_file_gcode,pos_file_log,pos_file_parms): #DRG5
 		#streaming code start
 
 		RX_BUFFER_SIZE = 128 #128
@@ -597,6 +702,7 @@ class GcodeExport(inkex.Effect):
 		REPORT_INTERVAL = 1.0 # seconds
 
 		is_run = True # Controls query timer
+		global set30
 
 		verbose = False
 		settings_mode = False
@@ -605,120 +711,170 @@ class GcodeExport(inkex.Effect):
 		if verbose :
 			log = open(pos_file_log, 'w')			
 		# Initialize
-		s = serial.Serial(port[0],BAUD_RATE)
-		s.writeTimeout = 0.2
-		s.timeout = 0.2	
-		s.flushInput()
-		s.flushOutput()		
-
-		#print "Initializing Grbl..."
-		s.write("\r\n\r\n")
-		# Wait for grbl to initialize and flush startup text in serial input
-		time.sleep(3)
-		s.write("$X\n")
-		time.sleep(3)
-		s.flushInput()
-		start_time = time.time();
-		# Stream g-code to grbl
-		l_count = 0
-		error_count = 0
-		out_temp = 0
-		g_count = 0
-		c_line = []
-		for line in f:
-			l_count += 1 # Iterate line counter
-			#l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-			l_block = line.strip()
-			c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
-			grbl_out = '' 
-			while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
-				try :
+		try:
+			s = serial.Serial(port[0],BAUD_RATE)
+			s.writeTimeout = 2.0   #DRG1
+			s.timeout = 2.0   #DRG1	
+			s.flushInput()
+			s.flushOutput()
+			#print "Initializing Grbl..."
+			s.write("\r\n\r\n")			
+			# Wait for grbl to initialize and flush startup text in serial input
+			#time.sleep(3)
+			#s.write("$X\n")
+			time.sleep(3.0)
+			s.flushInput()
+			s.write(self.options.set30)    #DRG1
+			#s.write('\$\n')   #DRG1
+			time.sleep(3.0)   #DRG1
+			s.flushInput()   #DRG1
+			start_time = time.time();
+			# Stream g-code to grbl
+			l_count = 0
+			error_count = 0
+			out_temp = 0
+			g_count = 0
+			c_line = []
+			for line in f:
+				l_count += 1 # Iterate line counter
+				#l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+				l_block = line.strip()
+				c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
+				grbl_out = '' 
+				while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
+					try :
+						out_temp = s.readline().strip() # Wait for grbl response
+						#time.sleep(0.2)
+					except :
+						if verbose : log.write("\nG-code block read error!")
+						pass
+					if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+						#s.flushInput()
+						if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
+					else :
+						if out_temp.find('error') >= 0 or out_temp == 0 : 
+							error_count += 1
+							if verbose : log.write("\n Error rate "+ str(error_count))
+						g_count += 1 # Iterate g-code counter
+						if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
+						#if l_block > 0 :
+						if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
+						del c_line[0] # Delete the block character count corresponding to the last 'ok'
+				try:
+					#time.sleep(.1)
+					s.write(l_block + '\n') # Send g-code block to grbl
+				except:
+					if verbose : log.write("\nG-code block comm erroGcodetoControllerr!")
+					s.close()
+					break
+				if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
+			#time.sleep(1)
+			# Wait until all responses have been received.
+			while l_count > g_count :
+				try:
 					out_temp = s.readline().strip() # Wait for grbl response
-					#time.sleep(0.2)
-				except :
+				except:
 					if verbose : log.write("\nG-code block read error!")
 					pass
 				if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-					#s.flushInput()
-					if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
+					if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
 				else :
-					if out_temp.find('error') >= 0 or out_temp == 0 : 
-						error_count += 1
-						log.write("\n Error rate "+ str(error_count))
+					if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
 					g_count += 1 # Iterate g-code counter
-					if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
-					#if l_block > 0 :
-					if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
+					if verbose : log.write("\nG-code file finished!")
 					del c_line[0] # Delete the block character count corresponding to the last 'ok'
-			try:
-				#time.sleep(.1)
-				s.write(l_block + '\n') # Send g-code block to grbl
-			except:
-				if verbose : log.write("\nG-code block comm error!")
-				s.close()
-				break
-			if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
-		#time.sleep(1)
-		# Wait until all responses have been received.
-		while l_count > g_count :
-			try:
-				out_temp = s.readline().strip() # Wait for grbl response
-			except:
-				if verbose : log.write("\nG-code block read error!")
-				pass
-			if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-				if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
-			else :
-				if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
-				g_count += 1 # Iterate g-code counter
-				if verbose : log.write("\nG-code file finished!")
-				del c_line[0] # Delete the block character count corresponding to the last 'ok'
-				if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
-		# Wait for user input after streaming is completed
-		if verbose : log.write("\nG-code streaming finished!"+ l_block);
-		end_time = time.time();
-		time.sleep(2);
-		is_run = False;
-		# try:
-			# s.write("\r\n\r\n")
-		# except:
-			# if verbose : log.write("\n error s.write to gerbil")
-			# pass
-		#s.reset_input_buffer();
-		if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
-		if check_mode :
-			if error_count > 0 :
-				if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
-			else :
-				if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
-		else :
-		   if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
-		   time.sleep(2);
-		   #s.reset_output_buffer()
-		   #raw_input("  Press <Enter> to exit and disable Grbl.") 
-		try:
-			s.reset_input_buffer()
+					if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
+			# Wait for user input after streaming is completed
+			if verbose : log.write("\nG-code streaming finished!"+ l_block);
+			end_time = time.time();
 			time.sleep(2);
+			is_run = False;
+			# try:
+				# s.write("\r\n\r\n")
+			# except:
+				# if verbose : log.write("\n error s.write to gerbil")
+				# pass
+			#s.reset_input_buffer();
+			if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");			
+			if check_mode :
+				if error_count > 0 :
+					if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
+				else :
+					if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
+			else :
+			   if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
+			   time.sleep(2);
+			try:
+				s.reset_input_buffer()
+				time.sleep(2);
+			except:
+				if verbose : log.write( "Error reset input port.")
+				pass			
+			try:
+				# Close file and serial port
+				#file_gcode.close()
+				f.close()
+			except:
+				if verbose : log.write( "Error close file. "+ f)
+				pass				
+			try:
+				s.close()
+			except:
+				if verbose : log.write( "Error close port.")
+				pass
+			try:
+				log.close()
+			except:
+				if verbose : log.write( "Error close log.")
+				pass
+			#end_time = (time.time() - start_time)/60
+			#inkex.errormsg(_("Completed in %mins... " %end_time ) )
 		except:
-			if verbose : log.write( "Error reset input port.")
-			pass			
-		try:
-			# Close file and serial port
-			#file_gcode.close()
-			f.close()
-		except:
-			if verbose : log.write( "Error close file. "+ f)
-			pass				
-		try:
-			s.close()
-		except:
-			if verbose : log.write( "Error close port.")
-			pass
-		try:
-			log.close()
-		except:
-			if verbose : log.write( "Error close log.")
-			pass
+			inkex.errormsg(_("No usb device found..."))
+
+		#write parms used for this run to a text file DRG5
+		parms = open(pos_file_parms, 'w')  #DRG5
+		if self.options.bg_color == "#ffffff": #DRG5
+			parms.write(" Replace transparency with " + "White") #DRG5
+		else: #DRG5
+			parms.write(" Replace transparency with " + "Black") #DRG5
+		parms.write("\n Resolution = " + str(self.options.resolution)) #DRG5
+		parms.write("\n Color to Greyscale conversion = " + str(self.options.grayscale_type)) #DRG5
+		parms.write("\n B/W conversion algorithm = " + str(self.options.conversion_type)) #DRG5
+		parms.write("\n B/W threshold (not gray scale option) = " + str(self.options.BW_threshold)) #DRG5
+		parms.write("\n B/W max black value (nor gray scale option) = " + str(self.options.BWBlackvalue)) #DRG5
+		parms.write("\n Grey Offset (gray scale option) = " + str(self.options.Grey_offset)) #DRG5
+		parms.write("\n Compression/expansion (gray scale option) = " + str(self.options.Grey_multiplier)) #DRG5
+		parms.write("\n Engraving speed " + str(self.options.speed_ON)) #DRG5
+		if self.options.change30 == True: #DRG5
+			parms.write("\n Modify $30 Value = " + "True") #DRG5
+		else: #DRG5
+			parms.write("\n Modify $30 Value = " + "False") #DRG5
+		parms.write("\n $30 Value = " + str(self.options.PWM_Value)) #DRG5
+		if self.options.flip_y == True: #DRG5
+			parms.write("\n Flip Y-Axis = " + "True") #DRG5
+		else: #DRG5
+			parms.write("\n Flip Y-Axis = " + "False") #DRG5
+		parms.write("\n Homing = " + str(self.options.homing)) #DRG5
+		if self.options.offset == True: #DRG5
+			parms.write("\n G0 XY Offsets from true home = " + "True") #DRG5
+		else: #DRG5
+			parms.write("\n G0 XY Offsets from true home = " + "False") #DRG5
+		parms.write("\n G0 X-Offset from left home position in milimeters = " + self.options.xoffset) #DRG5
+		parms.write("\n G0 Y-Offset from top home position in milimeters = " + self.options.yoffset) #DRG5
+		parms.write("\n Whitespace acceleration = " + self.options.speedup) #DRG5
+		parms.write("\n Minimum PWM = " + str(self.options.minPWM)) #DRG5
+		parms.write("\n Laser ON Command = " + self.options.laseron) #DRG5
+		parms.write("\n Laser OFF Command = " + self.options.laseroff) #DRG5
+		parms.write("\n Select Gcode output option = " + str(self.options.streaming)) #DRG5
+		parms.write("\n Workspace Coordinates = " + str(self.options.g54_value)) #DRG5
+		parms.write("\n Run start time = " + run_start_time) #DRG5
+		run_end_time = time.strftime('%X %x') #DRG5
+		time_now = time.time() #DRG5
+		parms.write("\n Run end time = " + run_end_time) #DRG5
+		parms.write("\n Elapsed time = " + time.strftime('%H:%M:%S', time.gmtime(time_now - begin_time))) #DRG5
+		parms.close() #DRG5
+		return
 	
 	def serial_ports(self):
     # """ Lists serial port names
@@ -728,35 +884,33 @@ class GcodeExport(inkex.Effect):
         # :returns:
             # A list of the serial ports available on the system
     # """
-		try:
-			if sys.platform.startswith('win'):
-				ports = ['COM%s' % (i + 1) for i in range(256)]
-			elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-				# this excludes your current terminal "/dev/tty"
-				ports = glob.glob('/dev/tty[A-Za-z]*')
-			elif sys.platform.startswith('darwin'):
-				ports = glob.glob('/dev/tty.*')
-			else:
-				raise EnvironmentError('Unsupported platform')
 
-			result = []
-			for port in ports:
-				try:
-					s = serial.Serial(port)
-					s.close()
-					result.append(port)
-				except (OSError, serial.SerialException):
-					inkex.errormsg("Unable to stream %  via USB port. Unplug/plugin USB cable" % (self.options.filename))
-					pass
-			return result
-		except IOError:
-			exit
+		if sys.platform.startswith('win'):
+			ports = ['COM%s' % (i + 1) for i in range(256)]
+		elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+			# this excludes your current terminal "/dev/tty"
+			ports = glob.glob('/dev/tty[A-Za-z]*')
+		elif sys.platform.startswith('darwin'):
+			ports = glob.glob('/dev/tty.*')
+		else:
+			raise EnvironmentError('Unsupported platform')
+
+		result = []
+		for port in ports:
+			try:
+				s = serial.Serial(port)
+				s.close()
+				result.append(port)
+			except (OSError, serial.SerialException):
+				pass
+		return result
 ######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	######## 	
 
 
 def _main():
 	e=GcodeExport()
 	e.affect()
+	
 	
 	exit()
 

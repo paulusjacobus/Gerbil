@@ -13,88 +13,140 @@
 	    	
 	<!-- Parametri di input per lo script python che vengono visualizzati nel widget creato da inkscape-->
 	<!-- vengono generati in ordine di come vengono scritti  -->
-	
-	<!-- Titolo e descrizione -->
-	<param name="Title" type="description">K40 Raster 2 Laser GCode generator</param>
-	<param name="Description" type="description">created by 305 Engin. and modified By Awesome.tech</param>
+	<param name="tab" type="notebook">
+        <page name="page_1" gui-text="PAGE 1">
+        
+            <!-- Titolo e descrizione -->
+            <param name="Title" type="description">K40 Raster 2 Laser GCode generator</param>
+            <param name="Description" type="description">created by 305 Engin. and modified By Awesome.tech</param>
+        
+            <!-- Opzioni di esportazione dell'immagine -->
+            <param name="directory" type="string"  gui-text="Export directory">C:/temp</param>
+            <param name="filename" type="string"  gui-text="File Name">rasterfile.gcode</param>
+            <param name="add-numeric-suffix-to-filename" type="boolean" gui-text="Add numeric suffix to filename">true</param>
+
+            <param name="bg_color" type="enum" gui-text="Replace transparency with">
+                    <_item value="#ffffff">White</_item>
+                    <_item value="#000000">Black</_item>
+            </param>
+            
+            <param name="resolution" type="enum" gui-text="Resolution">
+                    <_item value="1">1 pixel/mm   - 25 dpi</_item>
+                    <_item value="2">2 pixel/mm   - 50 dpi</_item>
+                    <_item value="5">5 pixel/mm   - 75 dpi</_item>
+                    <_item value="10">10 pixel/mm - 254 dpi</_item>
+                    <_item value="15">15 pixel/mm - 382 dpi</_item>
+            </param>
+                    
+            <!-- Come convertire in scala di grigi -->
+            <param name="grayscale_type" type="enum" gui-text="Color to Grayscale conversion">
+                    <_item value="1">0.21R + 0.71G + 0.07B</_item>
+                    <_item value="2">(R+G+B)/3</_item>
+                    <_item value="3">R</_item>
+                    <_item value="4">G</_item>
+                    <_item value="5">B</_item>
+                    <_item value="6">Max Color</_item>
+                    <_item value="7">Min Color</_item>
+            </param>
+            
+            <!-- Modalità di conversione in Bianco e Nero -->
+            <param name="conversion_type" type="enum" gui-text="B/W conversion algorithm ">
+                    <_item value="1">B/W fixed threshold</_item>
+                    <_item value="2">B/W random threshold</_item>
+                    <_item value="3">Halftone</_item>
+                    <_item value="4">Halftone row</_item>
+                    <_item value="5">Halftone column</_item>
+                    <_item value="6">Grayscale</_item>
+            </param>
+            
+            <!-- Opzioni modalita -->
+            <param name="BW_threshold" type="int" min="1" max="254" gui-text="B/W threshold (not gray scale option)">128</param>
+            <param name="BWBlackvalue" type="int" min="1" max="254" gui-text="B/W max black value (not gray scale option)">254</param>	
+            <param name="grayscale_resolution" type="enum" gui-text="Grayscale resolution ">
+                    <_item value="1">256</_item>
+                    <_item value="2">128</_item>  <!-- 256/2 -->
+                    <_item value="4">64</_item>  <!-- 256/4 -->
+                    <_item value="8">32</_item>  <!-- 256/8 -->
+                    <_item value="16">16</_item>  <!-- 256/16 -->
+                    <_item value="32">8</_item>  <!-- 256/32 -->
+            </param>	
+            <param name="Grey_offset" type="int" min="-50" max="30" gui-text="Grey Offset (gray scale option)">0</param>
+            <param name="Grey_multiplier" type="float" min="0.5" max="1.8" gui-text="Compression/expansion (gray scale option)">1.0</param>	
+            
+            <!-- Velocità Nero e spostamento -->
+            <param name="speed_ON" type="int" min="1" max="3000" appearance="full" gui-text="Engraving speed">1000</param>
+            
+            <!-- $30 Value   DRG  -->
+            <param name="change30" type="boolean" gui-text="Modify $30 Value?">false</param>
+            <param name="30warn" type="description">Sends a $30=xxxx command at start of job. CAUTION - Becomes permanant in EEPROM after 10,000 times
+            USE ONLY WHEN NECESSARY</param-->
+            <param name="30_Value" type="int" min="1" max="3000" appearance="full" gui-text="$30 Value">1000</param>
+            
+            
+        </page>
+
+        
+    <page name="page_2" gui-text="PAGE 2">
+        
+            <!-- FLIP = coordinate Cartesiane (False) Coordinate "informatiche" (True) -->
+            <param name="flip_y" type="boolean" gui-text="Flip Y-Axis">true</param>
+
+            <!-- Homing -->
+            <param name="homing" type="enum" gui-text="Homing ?">
+                    <_item value="1">Yes - $H </_item>
+                    <_item value="2">Yes - G0</_item>
+                    <_item value="3">No Homing</_item>
+            </param>
+
+            <!-- G54-G59 workspace coordinates -->
+            
+            <param name="g54_value" type="enum" gui-text="Workspace Coordinates ">
+                    <_item value="0">No G54-G59 (Work position X0 Y0)</_item>
+                    <_item value="1">Use G55 (Work position 1)</_item>
+                    <_item value="2">Use G56 (Work position 2)</_item>
+                    <_item value="3">Use G57 (Work position 3)</_item>
+                    <_item value="4">Use G58 (Work position 4)</_item>
+                    <_item value="5">Use G59 (Work position 5)</_item>
+            </param>
+            <param name="g54_msg" type="description">Uses values you set for G55-G59 as workspace coordinates at start of engraving.  Returns to the position you set for G54 at end of job.</param-->
+            
+            <param name="offset" type="boolean" gui-text="G0 XY Offsets from true home.">false</param>
+            <param name="offsetd" type="description">Offsets from current position to the right by X-Offset and down by Y-Offset at start of engraving.  Gives a left and top margin and can help to center work on the target canvas.</param-->
+            <param name="xoffset" type="float" precision="2" min="0" max="100" _gui-text="G0 X-Offset from left home position in milimeters:">0.00</param>
+            <param name="yoffset" type="float" precision="2" min="0" max="100" _gui-text="G0 Y-Offset from top home position in milimeters:">0.00</param-->	
+        
+            
+        </page>
+
+        
+    <page name="page_3" gui-text="PAGE 3">
     
-	<!-- Opzioni di esportazione dell'immagine -->
-	<param name="directory" type="string"  gui-text="Export directory"></param>
-	<param name="filename" type="string"  gui-text="File Name"></param>
-	<param name="add-numeric-suffix-to-filename" type="boolean" gui-text="Add numeric suffix to filename">true</param>
+            <param name="speedup" type="int" min="1000" max="10000" appearance="full" gui-text="Whitespace acceleration">3000</param>
+            <param name="speedupmsg" type="description">Additional speed for accelerating over whitespace</param-->
 
-	<param name="bg_color" type="enum" gui-text="Replace transparency with">
-		<_item value="#ffffff">White</_item>
-		<_item value="#000000">Black</_item>
-	</param>
-	
-	<param name="resolution" type="enum" gui-text="Resolution">
-		<_item value="1">1 pixel/mm</_item>
-		<_item value="2">2 pixel/mm</_item>
-		<_item value="5">5 pixel/mm</_item>
-		<_item value="10">10 pixel/mm</_item>
-		<_item value="15">15 pixel/mm</_item>
-	</param>
-		
-	<!-- Come convertire in scala di grigi -->
-	<param name="grayscale_type" type="enum" gui-text="Color to Grayscale conversion">
-		<_item value="1">0.21R + 0.71G + 0.07B</_item>
-		<_item value="2">(R+G+B)/3</_item>
-		<_item value="3">R</_item>
-		<_item value="4">G</_item>
-		<_item value="5">B</_item>
-		<_item value="6">Max Color</_item>
-		<_item value="7">Min Color</_item>
-	</param>
-	
-	<!-- Modalità di conversione in Bianco e Nero -->
-	<param name="conversion_type" type="enum" gui-text="B/W conversion algorithm ">
-		<_item value="1">B/W fixed threshold</_item>
-		<_item value="2">B/W random threshold</_item>
-		<_item value="3">Halftone</_item>
-		<_item value="4">Halftone row</_item>
-		<_item value="5">Halftone column</_item>
-		<_item value="6">Grayscale</_item>
-	</param>
-	
-	<!-- Opzioni modalita -->
-	<param name="BW_threshold" type="int" min="1" max="254" gui-text="B/W threshold">128</param>
-	
-	<param name="grayscale_resolution" type="enum" gui-text="Grayscale resolution ">
-		<_item value="1">256</_item>
-		<_item value="2">128</_item>  <!-- 256/2 -->
-		<_item value="4">64</_item>  <!-- 256/4 -->
-		<_item value="8">32</_item>  <!-- 256/8 -->
-		<_item value="16">16</_item>  <!-- 256/16 -->
-		<_item value="32">8</_item>  <!-- 256/32 -->
-	</param>	
+            <param name="minPWM" type="int" min="30" max="100" appearance="full" gui-text="Minimum PWM">70</param>
+            <param name="minPWMmsg" type="description">PWM less than this will be changed to S0 since it is too light to be visible - 70 is the default</param-->
 
-	
-	<!-- Velocità Nero e spostamento -->
-	<param name="speed_ON" type="int" min="1" max="3000" gui-text="Engraving speed">200</param>
-	
-	<!-- FLIP = coordinate Cartesiane (False) Coordinate "informatiche" (True) -->
-	<param name="flip_y" type="boolean" gui-text="Flip Y">false</param>
 
-	<!-- Homing -->
-	<param name="homing" type="enum" gui-text="Homing ?">
-		<_item value="1">Yes - $H </_item>
-		<_item value="2">Yes - G28</_item>
-		<_item value="3">No Homing</_item>
-	</param>
-	<param name="offset" type="boolean" gui-text="G28 Offset?">false</param>
-	<param name="xoffset" type="float" min="0" max="100" _gui-text="G28 X-Offset (mm or in):">0.0</param>
-	<param name="yoffset" type="float" min="0" max="100" _gui-text="G28 Y-Offset (mm or in):">0.0</param>	
-	<param name="laseron" type="string"  gui-text="Laser ON Command">M4</param>
-	<param name="laseroff" type="string"  gui-text="Laser OFF Command">M5</param>
+            <param name="laseron" type="string"  gui-text="Laser ON Command">M4</param>
 
-	
-	<!-- Anteprima = Solo immagine BN -->
-	<param name="preview_only" type="boolean" gui-text="Preview only">false</param>
-	<param name="p_only" type="description">If checked the gcode file will not be generated.</param>
+            <param name="laseroff" type="string"  gui-text="Laser OFF Command">M5</param>
 
-	<param name="stream" type="boolean" gui-text="Stream it">false</param>
-	<param name="s_only" type="description">If checked the file will be streamed to Gerbil.</param>
+            
+            <!-- Anteprima = Solo immagine BN -->
+            <!--param name="preview_only" type="boolean" gui-text="Preview only">false</param-->
+            <!--param name="p_only" type="description">If checked the gcode file will not be generated.</param-->
+
+            <!--param name="stream" type="boolean" gui-text="Stream it">false</param-->
+            <!--param name="s_only" type="description">If checked the file will be streamed to Gerbil.</param-->
+            <param name="streaming" type="optiongroup" _gui-text="Select Gcode output option: ">
+                    <option value="1">Preview only output</option>
+                    <option value="2">File output</option>
+                    <option value="3">Stream output</option>
+            </param>
+        
+        </page>
+        </param>
 
 	<!-- Per togliere la casella Antepima diretta bisogna sostituire <effect> con <effect needs-live-preview="false">  -->
 	<!-- <effect> -->
