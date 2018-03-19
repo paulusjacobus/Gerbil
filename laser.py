@@ -26,6 +26,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
+#Change Log
+#DRG1 - added code to create a gerbiltemp directory to contain output files when there isn't a valid directory path from the GUI
+#
+
 import inkex, simplestyle, simplepath
 import cubicsuperpath, simpletransform, bezmisc
 
@@ -2412,12 +2416,12 @@ class laser_gcode(inkex.Effect):
         gcode_pass = gcode
         for x in range(1,self.options.passes):
             gcode += "G91\nG1 Z-" + self.options.pass_depth + "\nG90\n" + gcode_pass
-        if not os.path.exists(os.path.dirname(self.options.file)):
-        try:
-            os.makedirs(os.path.dirname(self.options.file))
-        except OSError as exc: # Guard against race condition
-        if exc.errno != errno.EEXIST:
-            raise
+        #DRG1 if not os.path.exists(os.path.dirname(self.options.file)):
+            #DRG1 try:
+                #DRG1 os.makedirs(os.path.dirname(self.options.file))
+            #DRG1 except OSError as exc: # Guard against race condition
+                #DRG1 if exc.errno != errno.EEXIST:
+                    #DRG1 raise
         f = open(self.options.directory+self.options.file, "w")
         f.write(self.options.laser_off_command + " S0" + "\n" + self.header + "G1 F" + self.options.travel_speed + "\n" + gcode + self.footer)
         f.close()
@@ -2427,14 +2431,15 @@ class laser_gcode(inkex.Effect):
         self.OptionParser.add_option("-d", "--directory",                       action="store", type="string",          dest="directory",                           default="",                             help="Output directory")
         self.OptionParser.add_option("-f", "--filename",                        action="store", type="string",          dest="file",                                default="output.gcode",                 help="File name")
         self.OptionParser.add_option("",   "--add-numeric-suffix-to-filename",  action="store", type="inkbool",         dest="add_numeric_suffix_to_filename",      default=False,                          help="Add numeric suffix to file name")
-        self.OptionParser.add_option("",   "--laser-command",                   action="store", type="string",          dest="laser_command",                       default="M4",                      help="Laser gcode command")
-        self.OptionParser.add_option("",   "--laser-off-command",               action="store", type="string",          dest="laser_off_command",                   default="M5",                         help="Laser gcode end command")
+        self.OptionParser.add_option("",   "--laser-command",                   action="store", type="string",          dest="laser_command",                       default="M4",                           help="Laser gcode command")
+        self.OptionParser.add_option("",   "--laser-off-command",               action="store", type="string",          dest="laser_off_command",                   default="M5",                           help="Laser gcode end command")
         self.OptionParser.add_option("",   "--laser-speed",                     action="store", type="int",             dest="laser_speed",                         default="100",                          help="Laser speed (mm/min)")
         self.OptionParser.add_option("",   "--travel-speed",                    action="store", type="string",          dest="travel_speed",                        default="3000",                         help="Travel speed (mm/min)")
         self.OptionParser.add_option("",   "--laser-power",                     action="store", type="int",             dest="laser_power",                         default="256",                          help="S# is 256 or 10000 for full power")
         self.OptionParser.add_option("",   "--passes",                          action="store", type="int",             dest="passes",                              default="1",                            help="Quantity of passes")
         self.OptionParser.add_option("",   "--pass-depth",                      action="store", type="string",          dest="pass_depth",                          default="1",                            help="Depth of laser cut")
         self.OptionParser.add_option("",   "--power-delay",                     action="store", type="string",          dest="power_delay",                         default="100",                          help="Laser power-on delay (ms)")
+        self.OptionParser.add_option("",   "--homing",                          action="store", type="string",          dest="homing",                              default="1",                            help="Homing option")
         self.OptionParser.add_option("",   "--suppress-all-messages",           action="store", type="inkbool",         dest="suppress_all_messages",               default=True,                           help="Hide messages during g-code generation")
         self.OptionParser.add_option("",   "--create-log",                      action="store", type="inkbool",         dest="log_create_log",                      default=False,                          help="Create log files")
         self.OptionParser.add_option("",   "--log-filename",                    action="store", type="string",          dest="log_filename",                        default='',                             help="Create log files")
@@ -2442,7 +2447,7 @@ class laser_gcode(inkex.Effect):
         self.OptionParser.add_option("",   "--unit",                            action="store", type="string",          dest="unit",                                default="G21 (All units in mm)",        help="Units either mm or inches")
         self.OptionParser.add_option("",   "--active-tab",                      action="store", type="string",          dest="active_tab",                          default="",                             help="Defines which tab is active")
         self.OptionParser.add_option("",   "--biarc-max-split-depth",           action="store", type="int",             dest="biarc_max_split_depth",               default="4",                            help="Defines maximum depth of splitting while approximating using biarcs.")
-	self.OptionParser.add_option("",   "--stream",                          action="store", type="inkbool",         dest="stream",                              default=False,                          help="Streams to Gerbil controller")
+        self.OptionParser.add_option("",   "--stream",                          action="store", type="inkbool",         dest="stream",                              default=False,                          help="Streams to Gerbil controller")
 		
     def parse_curve(self, p, layer, w = None, f = None):
             c = []
@@ -2560,11 +2565,23 @@ class laser_gcode(inkex.Effect):
 
 
     def check_dir(self):
-        if self.options.directory[-1] not in ["/","\\"]:
+        
+        if (os.path.isdir(self.options.directory)) == False: #DRG1
+            if sys.platform.startswith('win'): #DRG1
+                self.options.directory = 'C:\\gerbiltemp' #DRG1
+            else: #DRG1
+                self.options.directory = '/gerbiltemp' #DRG1
+            if (os.path.isdir(self.options.directory)) == False: #DRG1
+                os.mkdir(self.options.directory) #DRG1
+            inkex.debug("The directory you specified does not exist - using " + self.options.directory + " instead") #DRG1
+            #inkex.debug(self.options.directory) #DRG1
+        if self.options.directory[-1] not in ["/", "\\"]:
             if "\\" in self.options.directory :
                 self.options.directory += "\\"
             else :
                 self.options.directory += "/"
+        #inkex.debug(self.options.directory) #DRG1
+        #inkex.debug(self.options.directory[-1]) #DRG1
         print_("Checking direcrory: '%s'"%self.options.directory)
         if (os.path.isdir(self.options.directory)):
             if (os.path.isfile(self.options.directory+'header')):
@@ -2604,14 +2621,15 @@ class laser_gcode(inkex.Effect):
                     max_n = max(max_n,int(r.group(1)))
             filename = name + "_" + ( "0"*(4-len(str(max_n+1))) + str(max_n+1) ) + ext
             self.options.file = filename
+            #inkex.debug(self.options.file) #DRG1
 
-        print_("Testing writing rights on '%s'"%(self.options.directory+self.options.file))
-        try:
-            f = open(self.options.directory+self.options.file, "w")
-            f.close()
-        except:
-            self.error(_("Can not write to specified file!\n%s"%(self.options.directory+self.options.file)),"error")
-            return False
+        #DRG1 print_("Testing writing rights on '%s'"%(self.options.directory+self.options.file))
+        #DRG1 try:
+            #DRG1 f = open (self.options.directory,self.options.file, "w")
+            #DRG1 f.close()
+        #DRG1 except:
+            #DRG1 self.error(_("Can not write to specified file!\n%s"%(self.options.directory+self.options.file)),"error")
+            #DRG1 return False
         return True
 
 
@@ -2634,8 +2652,8 @@ class laser_gcode(inkex.Effect):
             r = ''
             for i in range(6):
                 if c[i]!=None:
-					r += s[i] + ("%f" % (round(c[i],4))).rstrip('0')
-					
+                    r += s[i] + ("%f" % (round(c[i],4))).rstrip('0')
+
             return r
 
         def calculate_angle(a, current_a):
@@ -3078,137 +3096,136 @@ class laser_gcode(inkex.Effect):
 ###
 ################################################################################
     def gcodetocontroller(self, port, pos_file_gcode, pos_file_log):
+        #streaming code start
 
-		#streaming code start
+        RX_BUFFER_SIZE = 128 #128
+        BAUD_RATE = 115200
+        ENABLE_STATUS_REPORTS = True
+        REPORT_INTERVAL = 1.0 # seconds
 
-		RX_BUFFER_SIZE = 128 #128
-		BAUD_RATE = 115200
-		ENABLE_STATUS_REPORTS = True
-		REPORT_INTERVAL = 1.0 # seconds
+        is_run = True # Controls query timer
 
-		is_run = True # Controls query timer
+        verbose = False
+        settings_mode = False
+        check_mode = False
+        f = open(pos_file_gcode, 'r')
+        if verbose :
+                log = open(pos_file_log, 'w')			
+        # Initialize, we choose the first of available ports!
+        s = serial.Serial(port[0],BAUD_RATE)
+        s.writeTimeout = 0.2
+        s.timeout = 0.2	
+        s.flushInput()
+        s.flushOutput()		
 
-		verbose = False
-		settings_mode = False
-		check_mode = False
-		f = open(pos_file_gcode, 'r')
-		if verbose :
-			log = open(pos_file_log, 'w')			
-		# Initialize, we choose the first of available ports!
-		s = serial.Serial(port[0],BAUD_RATE)
-		s.writeTimeout = 0.2
-		s.timeout = 0.2	
-		s.flushInput()
-		s.flushOutput()		
-
-		#print "Initializing Grbl..."
-		s.write("\r\n\r\n")
-		# Wait for grbl to initialize and flush startup text in serial input
-		time.sleep(2)
-		s.write("$X\n")
-		time.sleep(2)
-		s.flushInput()
-		start_time = time.time();
-		# Stream g-code to grbl
-		l_count = 0
-		error_count = 0
-		out_temp = 0
-		g_count = 0
-		c_line = []
-		for line in f:
-			l_count += 1 # Iterate line counter
-			l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-			# l_block = line.strip()
-			c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
-			grbl_out = '' 
-			while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
-				try :
-					out_temp = s.readline().strip() # Wait for grbl response
-					#time.sleep(0.2) debug stuff
-				except :
-					if verbose : log.write("\nG-code block read error!")
-					pass
-				if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-					#s.flushInput()
-					if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
-				else :
-					if out_temp.find('error') >= 0 or out_temp == 0 : 
-						error_count += 1
-						if verbose : log.write("\n Error rate "+ str(error_count))
-					g_count += 1 # Iterate g-code counter
-					if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
-					#if l_block > 0 :
-					if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
-					del c_line[0] # Delete the block character count corresponding to the last 'ok'
-			try:
-				# time.sleep(.1) debug stuff
-				s.write(l_block + '\n') # Send g-code block to grbl
-			except:
-				if verbose : log.write("\nG-code block comm error!")
-				s.close()
-				break
-			if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
-		# time.sleep(1)
-		# Wait until all responses have been received.
-		while l_count > g_count :
-			try:
-				out_temp = s.readline(s.inWaiting()).strip() # Wait for grbl response
-			except:
-				log.write("\nG-code block read error!")
-				pass
-			if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-				if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
-			else :
-				if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
-				g_count += 1 # Iterate g-code counter
-				if verbose : log.write("\nG-code file finished!")
-				del c_line[0] # Delete the block character count corresponding to the last 'ok'
-				if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
-		# Wait for streaming completed
-		if verbose : log.write("\nG-code streaming finished!"+ l_block);
-		end_time = time.time();
-		time.sleep(2);
-		is_run = False;
-		try:
-			s.write("\r\n\r\n")
-		except:
-			if verbose : log.write("\n error s.write to gerbil")
-			pass
-		s.reset_input_buffer();
-		if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
-		if check_mode :
-			if error_count > 0 :
-				if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
-			else :
-				if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
-		else :
-		   if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
-		   time.sleep(2)
-		   #s.reset_output_buffer()
-		   #raw_input("  Press <Enter> to exit and disable Grbl.") 
-		try:
-			s.reset_input_buffer()
-			time.sleep(2)
-		except:
-			if verbose : log.write( "Error reset input port.")
-			pass			
-		try:
-			# Close file and serial port
-			#file_gcode.close()
-			f.close()
-		except:
-			if verbose : log.write( "Error close file. "+ f)
-			pass				
-		try:
-			s.close()
-		except:
-			if verbose : log.write( "Error close port.")
-			pass
-		try:
-			log.close()
-		except:
-			if verbose : log.write( "Error close log.")
-			pass
+        #print "Initializing Grbl..."
+        s.write("\r\n\r\n")
+        # Wait for grbl to initialize and flush startup text in serial input
+        time.sleep(2)
+        s.write("$X\n")
+        time.sleep(2)
+        s.flushInput()
+        start_time = time.time();
+        # Stream g-code to grbl
+        l_count = 0
+        error_count = 0
+        out_temp = 0
+        g_count = 0
+        c_line = []
+        for line in f:
+                l_count += 1 # Iterate line counter
+                l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+                # l_block = line.strip()
+                c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
+                grbl_out = '' 
+                while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
+                        try :
+                                out_temp = s.readline().strip() # Wait for grbl response
+                                #time.sleep(0.2) debug stuff
+                        except :
+                                if verbose : log.write("\nG-code block read error!")
+                                pass
+                        if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+                                #s.flushInput()
+                                if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
+                        else :
+                                if out_temp.find('error') >= 0 or out_temp == 0 : 
+                                        error_count += 1
+                                        if verbose : log.write("\n Error rate "+ str(error_count))
+                                g_count += 1 # Iterate g-code counter
+                                if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
+                                #if l_block > 0 :
+                                if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
+                                del c_line[0] # Delete the block character count corresponding to the last 'ok'
+                try:
+                        # time.sleep(.1) debug stuff
+                        s.write(l_block + '\n') # Send g-code block to grbl
+                except:
+                        if verbose : log.write("\nG-code block comm error!")
+                        s.close()
+                        break
+                if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
+        # time.sleep(1)
+        # Wait until all responses have been received.
+        while l_count > g_count :
+                try:
+                        out_temp = s.readline(s.inWaiting()).strip() # Wait for grbl response
+                except:
+                        log.write("\nG-code block read error!")
+                        pass
+                if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+                        if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
+                else :
+                        if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
+                        g_count += 1 # Iterate g-code counter
+                        if verbose : log.write("\nG-code file finished!")
+                        del c_line[0] # Delete the block character count corresponding to the last 'ok'
+                        if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
+        # Wait for streaming completed
+        if verbose : log.write("\nG-code streaming finished!"+ l_block);
+        end_time = time.time();
+        time.sleep(2);
+        is_run = False;
+        try:
+                s.write("\r\n\r\n")
+        except:
+                if verbose : log.write("\n error s.write to gerbil")
+                pass
+        s.reset_input_buffer();
+        if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
+        if check_mode :
+                if error_count > 0 :
+                        if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
+                else :
+                        if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
+        else :
+           if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
+           time.sleep(2)
+           #s.reset_output_buffer()
+           #raw_input("  Press <Enter> to exit and disable Grbl.") 
+        try:
+                s.reset_input_buffer()
+                time.sleep(2)
+        except:
+                if verbose : log.write( "Error reset input port.")
+                pass			
+        try:
+                # Close file and serial port
+                #file_gcode.close()
+                f.close()
+        except:
+                if verbose : log.write( "Error close file. "+ f)
+                pass				
+        try:
+                s.close()
+        except:
+                if verbose : log.write( "Error close port.")
+                pass
+        try:
+                log.close()
+        except:
+                if verbose : log.write( "Error close log.")
+                pass
 	
     def serial_ports(self):
     # """ Lists serial port names
@@ -3218,26 +3235,26 @@ class laser_gcode(inkex.Effect):
         # :returns:
             # A list of the serial ports available on the system (we choose the first one available)
     # """
-		#global serial
-		if sys.platform.startswith('win'):
-			ports = ['COM%s' % (i + 1) for i in range(256)]
-		elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-			# this excludes your current terminal "/dev/tty"
-			ports = glob.glob('/dev/tty[A-Za-z]*')
-		elif sys.platform.startswith('darwin'):
-			ports = glob.glob('/dev/tty.*')
-		else:
-			raise EnvironmentError('Unsupported platform')
+        #global serial
+        if sys.platform.startswith('win'):
+                ports = ['COM%s' % (i + 1) for i in range(256)]
+        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+                # this excludes your current terminal "/dev/tty"
+                ports = glob.glob('/dev/tty[A-Za-z]*')
+        elif sys.platform.startswith('darwin'):
+                ports = glob.glob('/dev/tty.*')
+        else:
+                raise EnvironmentError('Unsupported platform')
 
-		result = []
-		for port in ports:
-			try:
-				s = serial.Serial(port)
-				s.close()
-				result.append(port)
-			except (OSError, serial.SerialException):
-				pass
-		return result
+        result = []
+        for port in ports:
+                try:
+                        s = serial.Serial(port)
+                        s.close()
+                        result.append(port)
+                except (OSError, serial.SerialException):
+                        pass
+        return result
 		
 ################################################################################
 ###
@@ -3349,8 +3366,10 @@ class laser_gcode(inkex.Effect):
         self.get_info()
 
         self.laser()
-		
-	if self.options.stream == True : self.gcodetocontroller((self.serial_ports()),((self.options.directory+self.options.file)),((self.options.directory+self.options.file+"_log")))
+
+        #inkex.debug(self.options.directory+self.options.file) #DRG1
+        if self.options.stream == True :
+            self.gcodetocontroller((self.serial_ports()),((self.options.directory+self.options.file)),((self.options.directory+self.options.file+"_log")))
 
 			
 

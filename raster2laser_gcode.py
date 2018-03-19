@@ -34,6 +34,7 @@
 #DRG4 - added return to orig home when x and y offset are in effect
 #DRG5 - Added output text file containing parms used for this extension
 #DRG6 - Added G54-G59 workspace coordinates
+#DRG7 - added code to create a gerbiltemp directory to contain output files when there isn't a valid directory path from the GUI
 # ----------------------------------------------------------------------------
 '''
 
@@ -145,82 +146,89 @@ class GcodeExport(inkex.Effect):
 		
 		##Implementare check_dir
 		
-		if (os.path.isdir(self.options.directory)) == True:					
+		if (os.path.isdir(self.options.directory)) == False: #DRG7
+			if sys.platform.startswith('win'): #DRG7
+				self.options.directory = 'C:\gerbiltemp' #DRG7
+			else: #DRG7
+				self.options.directory = '/gerbiltemp' #DRG7
+			if (os.path.isdir(self.options.directory)) == False: #DRG7
+				os.mkdir(self.options.directory) #DRG7
+			inkex.debug("The directory you specified does not exist - using " + self.options.directory + " instead") #DRG7
 			
-			##CODICE SE ESISTE LA DIRECTORY
-			#inkex.errormsg("OK") #DEBUG
+                ##CODICE SE ESISTE LA DIRECTORY
+                #inkex.errormsg("OK") #DEBUG
 
-			
-			#Aggiungo un suffisso al nomefile per non sovrascrivere dei file
-			if self.options.add_numeric_suffix_to_filename :
-				dir_list = os.listdir(self.options.directory) #List di tutti i file nella directory di lavoro
-				temp_name =  self.options.filename
-				max_n = 0
-				for s in dir_list :
-					r = re.match(r"^%s_0*(\d+)%s$"%(re.escape(temp_name),'.png' ), s)
-					if r :
-						max_n = max(max_n,int(r.group(1)))	
-				self.options.filename = temp_name + "_" + ( "0"*(4-len(str(max_n+1))) + str(max_n+1) )
+                
+                #Aggiungo un suffisso al nomefile per non sovrascrivere dei file
+		if self.options.add_numeric_suffix_to_filename :
+			dir_list = os.listdir(self.options.directory) #List di tutti i file nella directory di lavoro
+			temp_name =  self.options.filename
+			max_n = 0
+			for s in dir_list :
+				r = re.match(r"^%s_0*(\d+)%s$"%(re.escape(temp_name),'.png' ), s)
+				if r :
+					max_n = max(max_n,int(r.group(1)))      
+			self.options.filename = temp_name + "_" + ( "0"*(4-len(str(max_n+1))) + str(max_n+1) )
 
 
-			#genero i percorsi file da usare
-			
-			suffix = ""
-			if self.options.conversion_type == 1:
-				suffix = "_BWfix_"+str(self.options.BW_threshold)+"_"
-			elif self.options.conversion_type == 2:
-				suffix = "_BWrnd_"
-			elif self.options.conversion_type == 3:
-				suffix = "_H_"
-			elif self.options.conversion_type == 4:
-				suffix = "_Hrow_"
-			elif self.options.conversion_type == 5:
-				suffix = "_Hcol_"
-			else:
-				if self.options.grayscale_resolution == 1:
-					suffix = "_Gray_256_"
-				elif self.options.grayscale_resolution == 2:
-					suffix = "_Gray_128_"
-				elif self.options.grayscale_resolution == 4:
-					suffix = "_Gray_64_"
-				elif self.options.grayscale_resolution == 8:
-					suffix = "_Gray_32_"
-				elif self.options.grayscale_resolution == 16:
-					suffix = "_Gray_16_"
-				elif self.options.grayscale_resolution == 32:
-					suffix = "_Gray_8_"
-				else:
-					suffix = "_Gray_"
-				
-			
-			pos_file_png_exported = os.path.join(self.options.directory,self.options.filename+".png") 
-			pos_file_png_BW = os.path.join(self.options.directory,self.options.filename+suffix+"preview.png") 
-			pos_file_gcode = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.txt") 
-			pos_file_log = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.log")
-			pos_file_parms = os.path.join(self.options.directory,self.options.filename+suffix+"parms.txt") #DRG5			
-						
-
-			#Esporto l'immagine in PNG
-			self.exportPage(pos_file_png_exported,current_file,bg_color)
-
-			
-			#DA FARE
-			#Manipolo l'immagine PNG per generare il file Gcode
-			self.PNGtoGcode(pos_file_png_exported,pos_file_png_BW,pos_file_gcode)
-			#list the available ports
-			#port = self.serial_ports()
-			#stream the gcode to Gerbil
-			if self.options.streaming == "3" :
-				try:
-					port = self.serial_ports()
-					flag = True
-				except:
-					inkex.errormsg(_("No Serial port found with controller " ) )
-					flag = False
-				if flag == True : 
-					self.GcodetoController(port,pos_file_gcode,pos_file_log,pos_file_parms) #DRG5
+		#genero i percorsi file da usare
+		
+		suffix = ""
+		if self.options.conversion_type == 1:
+			suffix = "_BWfix_"+str(self.options.BW_threshold)+"_"
+		elif self.options.conversion_type == 2:
+			suffix = "_BWrnd_"
+		elif self.options.conversion_type == 3:
+			suffix = "_H_"
+		elif self.options.conversion_type == 4:
+			suffix = "_Hrow_"
+		elif self.options.conversion_type == 5:
+			suffix = "_Hcol_"
 		else:
-			inkex.errormsg("Directory does not exist! Please specify existing directory!")
+			if self.options.grayscale_resolution == 1:
+				suffix = "_Gray_256_"
+			elif self.options.grayscale_resolution == 2:
+				suffix = "_Gray_128_"
+			elif self.options.grayscale_resolution == 4:
+				suffix = "_Gray_64_"
+			elif self.options.grayscale_resolution == 8:
+				suffix = "_Gray_32_"
+			elif self.options.grayscale_resolution == 16:
+				suffix = "_Gray_16_"
+			elif self.options.grayscale_resolution == 32:
+				suffix = "_Gray_8_"
+			else:
+				suffix = "_Gray_"
+			
+		
+		pos_file_png_exported = os.path.join(self.options.directory,self.options.filename+".png") 
+		pos_file_png_BW = os.path.join(self.options.directory,self.options.filename+suffix+"preview.png") 
+		pos_file_gcode = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.txt") 
+		pos_file_log = os.path.join(self.options.directory,self.options.filename+suffix+"gcode.log")
+		pos_file_parms = os.path.join(self.options.directory,self.options.filename+suffix+"parms.txt") #DRG5                    
+					
+
+		#Esporto l'immagine in PNG
+		self.exportPage(pos_file_png_exported,current_file,bg_color)
+
+		
+		#DA FARE
+		#Manipolo l'immagine PNG per generare il file Gcode
+		self.PNGtoGcode(pos_file_png_exported,pos_file_png_BW,pos_file_gcode)
+		#list the available ports
+		#port = self.serial_ports()
+		#stream the gcode to Gerbil
+		if self.options.streaming == "3" :
+			try:
+				port = self.serial_ports()
+				flag = True
+			except:
+				inkex.errormsg(_("No Serial port found with controller " ) )
+				flag = False
+			if flag == True : 
+				self.GcodetoController(port,pos_file_gcode,pos_file_log,pos_file_parms) #DRG5
+		#DRG7 else:
+			#DRG7 inkex.errormsg("Directory does not exist! Please specify existing directory!")
 
 	
 		
