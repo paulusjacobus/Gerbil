@@ -32,6 +32,7 @@ The import a picture from the File function from the Import menu uses a default 
 
 ## Using the Vector Cutting Plug in:
 The instructions for using of JTech Inkscape plug in can be found here: https://jtechphotonics.com/?page_id=2012
+In addition you have to install svgpathtools from here: https://pypi.org/project/svgpathtools/
 
 Also this plugin allows engraving via vectors (not rastering) and describes how to combine vector engraving and cutting. The download version on here on Github has been altered: the M18 command has been removed to make it compatible with Grbl.
 In inkscape, mirror the Y axis via the button "Flip selected objects horizontally) so that everything looks mirrored in Inkscape and in CNCJS (when uploaded). This is required so the user of the K40 does not have to change their Y axis end stop.
