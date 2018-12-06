@@ -50,7 +50,7 @@ import serial
 ### import pdb; pdb.set_trace()
 #from pprint import pprint
 from svgpathtools import *
-from objbrowser import browse
+#from objbrowser import browse
 # to debug:  browse(locals())
 
 ### Check if inkex has errormsg (0.46 version doesnot have one.) Could be removed later.
