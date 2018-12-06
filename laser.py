@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """
+Modified by Stefan Stefanov 2018
 Modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com
 modified by Adam Polak 2014, polakiumengineering.org
 
@@ -49,7 +50,7 @@ import serial
 ### import pdb; pdb.set_trace()
 #from pprint import pprint
 from svgpathtools import *
-#from objbrowser import browse
+from objbrowser import browse
 # to debug:  browse(locals())
 
 ### Check if inkex has errormsg (0.46 version doesnot have one.) Could be removed later.
@@ -2409,38 +2410,85 @@ class Arangement_Genetic:
 ###
 ###        Path sort
 ### S.Stefanov 2018
+###
 ################################################################################
+
+
+# return -1 if boxes are not contained ot paths are crossed
+# return1 of contain
+# 0 if not
 def path1_is_contained_in_path2(path1, path2):
     assert path2.isclosed()  # This question isn't well-defined otherwise
     if path2.intersect(path1):
-        return False
+        return -1
+    xmin, xmax, ymin, ymax = path2.bbox()
+# trivial cases
+    xmin1, xmax1, ymin1, ymax1 = path1.bbox()
+    if xmax1 < xmin:
+        return -1
+    if xmax < xmin1:
+        return -1
+    if ymax1 < ymin:
+        return -1
+    if ymax < ymin1:
+        return -1
 
     # find a point that's definitely outside path2
-    xmin, xmax, ymin, ymax = path2.bbox()
-    B = (xmin + 1) + 1j*(ymax + 1)
 
+    B = (xmin + 1) + 1j*(ymax + 1)
     A = path1.start  # pick an arbitrary point in path1
     AB_line = Path(Line(A, B))
     number_of_intersections = len(AB_line.intersect(path2))
     if number_of_intersections % 2:  # if number of intersections is odd
-        return True
+        return 1
     else:
-        return False
+        return 0
 
 def contains_paths(subpaths):
+#prepare matrix for Checks
     contains=[]
-    i = 0
-    while i < len(subpaths):
+# c_p[i,j] values:
+#-1 if not to check
+# 0 if path i is not contained in path j
+# 1 if path i is contained in path j
+    c_p=[]
+    for i in range(len(subpaths)):
+        c_p.append([])
+        for j in range(len(subpaths)):
+            if i==j:
+# don't need to sheck path with himself
+                c_p[i].append(-1)
+            else:
+                c_p[i].append(0)
+
+    for i in range(len(subpaths)):
         mypath=subpaths[i]
         c = 0
         j = 0
-        while j < len(subpaths):
-            if j<>i :
-                if path1_is_contained_in_path2(subpaths[j],subpaths[i]) :
-                    c+=1
-            j+=1
+        for j in range(len(subpaths)):
+            if c_p[j][i] == 0 :
+                cont=path1_is_contained_in_path2(subpaths[j],subpaths[i])
+                if cont==-1:
+                    c_p[i][j]=-1   # don't check opposite again
+                if cont==1 :
+                    c_p[j][i]=1
+                    c_p[i][j]=-1
+#TODO make recursive
+                    for k in range(len(subpaths)):
+                        if k<>j:
+                            if c_p[k][j]==1:
+                                c_p[k][i]=1
+                                c_p[i][k]=-1
+
+#    maxcont=0
+    for i in range(len(subpaths)):
+        c=0
+        for j in range(len(subpaths)):
+            if c_p[j][i]==1:
+                c+=1
+#                if maxcont<c:
+#                    maxcont=c
         contains.append(c)
-        i+=1
     return contains
 
 def sort_paths(subpaths):
@@ -2512,6 +2560,8 @@ class laser_gcode(inkex.Effect):
                 return []
             p = self.transform_csp(p, layer)
             contain=contains_paths(pt)
+            print_("pt=",pt)
+            print_("contain=",contain)
             contmax=max(contain)
             if contmax>0 :
 # there are paths contained in other paths
