@@ -2595,7 +2595,7 @@ def tree_parent(contains):
 def tree_order(t_p):
     global print_
     order=sort_nodes(t_p)
-    if (len(order)>0:
+    if len(order)>0:
         del order[-1]
     return order
 
