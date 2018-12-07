@@ -50,7 +50,7 @@ import serial
 ### import pdb; pdb.set_trace()
 #from pprint import pprint
 from svgpathtools import *
-#from objbrowser import browse
+from objbrowser import browse
 # to debug:  browse(locals())
 
 ### Check if inkex has errormsg (0.46 version doesnot have one.) Could be removed later.
@@ -1364,6 +1364,18 @@ def print_(*arg):
     f.write("\n")
     f.close()
 
+def print_a(A, x=-1, y=-1, co='green'):
+    global print_
+    for i in range(len(A)):
+        row = A[i]
+        s=""
+        for j in range(len(row)):
+#            if i==x and j==y:
+#                s+=colored(','.join(['{:3}'.format(A[i][j])]),co,attrs=['reverse'])
+#            else:
+            s+=(','.join(['{:3}'.format(A[i][j])]))
+        print_ (s)
+    print_("\n")
 
 ################################################################################
 ###        Point (x,y) operations
@@ -2408,16 +2420,85 @@ class Arangement_Genetic:
 
 ################################################################################
 ###
+###
+###
+###
+###
+###
 ###        Path sort
 ### S.Stefanov 2018
 ###
+###
+###
+###
+###
+###
+###
 ################################################################################
 
+# tree sorting
+#return true if p is parent of c
+def is_parent_of(c,p,c_p):
+    if (c_p[p][c]==1):
+        return True
+    else:
+        return False
 
+#return true if p is parent of c
+def have_parent(c,c_p):
+    for i in range(len(c_p[0])):
+        if is_parent_of(c,i,c_p):
+            return True
+    return False
+
+#return true if c is child of p
+def is_child_of(c,p,c_p):
+    if (c_p[c][p]==1):
+        return True
+    else:
+        return False
+
+def sort_nodes(p, par=-1):
+    keys=[]
+    i=0
+    while i<len(p):
+        if p[i]==par:
+            p2=sort_nodes(p,i)
+            for j in range(len(p2)):
+                keys.append(p2[j])
+        i+=1
+    if len(keys)==0:
+        return [par]
+    else:
+        keys.append(par)
+        return keys
+
+#return direct parent of id
+def get_parent(id,c_p):
+    global print_
+    par=[]  # list of parents
+    for i in range(len(c_p[0])):
+        if is_child_of(id,i,c_p):
+            par.append(i)
+    if len(par)>0:
+        i=0
+        while len(par)>1:
+            j=0
+            while len(par)>1 and j < len(par):
+                if i<>j and is_child_of(par[j],par[i],c_p):
+                    del par[i]
+                else:
+                    j+=1
+#                    j=i+1
+            i+=1
+        return par[0]
+    else:
+        return -1
+
+def path1_is_contained_in_path2(path1, path2):
 # return -1 if boxes are not contained ot paths are crossed
 # return1 of contain
 # 0 if not
-def path1_is_contained_in_path2(path1, path2):
     assert path2.isclosed()  # This question isn't well-defined otherwise
     if path2.intersect(path1):
         return -1
@@ -2434,7 +2515,6 @@ def path1_is_contained_in_path2(path1, path2):
         return -1
 
     # find a point that's definitely outside path2
-
     B = (xmin + 1) + 1j*(ymax + 1)
     A = path1.start  # pick an arbitrary point in path1
     AB_line = Path(Line(A, B))
@@ -2444,13 +2524,13 @@ def path1_is_contained_in_path2(path1, path2):
     else:
         return 0
 
-def contains_paths(subpaths):
-#prepare matrix for Checks
-    contains=[]
+def contain_matrix (subpaths,attr):
 # c_p[i,j] values:
 #-1 if not to check
 # 0 if path i is not contained in path j
 # 1 if path i is contained in path j
+    global print_
+    global print_a
     c_p=[]
     for i in range(len(subpaths)):
         c_p.append([])
@@ -2460,11 +2540,8 @@ def contains_paths(subpaths):
                 c_p[i].append(-1)
             else:
                 c_p[i].append(0)
-
+    print_a (c_p)
     for i in range(len(subpaths)):
-        mypath=subpaths[i]
-        c = 0
-        j = 0
         for j in range(len(subpaths)):
             if c_p[j][i] == 0 :
                 cont=path1_is_contained_in_path2(subpaths[j],subpaths[i])
@@ -2479,15 +2556,15 @@ def contains_paths(subpaths):
                             if c_p[k][j]==1:
                                 c_p[k][i]=1
                                 c_p[i][k]=-1
+    return c_p
 
-#    maxcont=0
-    for i in range(len(subpaths)):
+def contains_paths(c_p):
+    contains=[]
+    for i in range(len(c_p[0])):
         c=0
-        for j in range(len(subpaths)):
+        for j in range(len(c_p[0])):
             if c_p[j][i]==1:
                 c+=1
-#                if maxcont<c:
-#                    maxcont=c
         contains.append(c)
     return contains
 
@@ -2506,9 +2583,50 @@ def sort_paths(subpaths):
                     order.append(j)
                 j+=1
             i+=1
-#            paths_ordered=[paths[k] for k in order]
-#            attr_ordered=[attr[k] for k in order]
     return order
+
+def tree_parent(contains):
+    global print_
+    t_p=[]
+    for i in range(len(contains[0])):
+        t_p.append(get_parent(i,contains))
+    return t_p
+
+def tree_order(t_p):
+    global print_
+    order=sort_nodes(t_p)
+    if (len(order)>0:
+        del order[-1]
+    return order
+
+def sort_tree_order (t_p, p, parent = -1):
+# sort paths by tree and distance
+    k=[]
+    for i in range(len(t_p)):
+        if t_p[i]==parent:
+            k.append(i)
+    keys = []
+    while len(k)>0:
+        i=0
+        while i<len(k):
+            if t_p[k[i]]==parent:
+                if len(keys)>0:
+                    end = p[keys[-1]][-1][1]
+                else:
+                    end=[0,0]
+                dist = None
+                for ki in range(len(k)):
+                    start = p[k[ki]][0][1]
+                    dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,ki)    ,   dist )
+                new_p = k[dist[1]]  # new parent
+                del k[dist[1]]
+                key = sort_tree_order (t_p, p, new_p)
+                for kk in range(len(key)):
+                    keys += [key[kk]]
+            else:
+                i+=1
+    keys += [parent]
+    return keys
 
 ################################################################################
 ###
@@ -2553,18 +2671,26 @@ class laser_gcode(inkex.Effect):
         self.OptionParser.add_option("",   "--biarc-max-split-depth",           action="store", type="int",             dest="biarc_max_split_depth",               default="4",                            help="Defines maximum depth of splitting while approximating using biarcs.")
         self.OptionParser.add_option("",   "--stream",                          action="store", type="inkbool",         dest="stream",                              default=False,                          help="Streams to Gerbil controller")
 
-    def parse_curve(self, p, layer, pt, w = None, f = None):
-            global print_
-            c = []
-            if len(p)==0 :
-                return []
-            p = self.transform_csp(p, layer)
-            contain=contains_paths(pt)
-            print_("pt=",pt)
-            print_("contain=",contain)
-            contmax=max(contain)
-            if contmax>0 :
-# there are paths contained in other paths
+    def parse_curve(self, p, layer, pt, attr, w = None, f = None, ):
+        global print_
+# True for tree sort, False for flat sort
+        tree_sort=True
+
+        c = []
+        if len(p)==0 :
+            return []
+        p = self.transform_csp(p, layer)
+        c_p=contain_matrix(pt, attr)
+        contain=contains_paths(c_p)
+        contmax=max(contain)
+        if contmax>0 :
+            if tree_sort:
+                t_p = tree_parent (c_p)
+                keys = sort_tree_order(t_p, p)
+                if (len(keys))>0:
+                    del keys[-1]
+            else:
+# flat sort
                 k = range(0,len(contain))
                 keys = []
                 co = 0
@@ -2587,32 +2713,30 @@ class laser_gcode(inkex.Effect):
                         else:
                             i+=1
                     co+=1
+        else:
+            ### contmax = 0, Sort to reduce Rapid distance
+            k = range(1,len(p))
+            keys = [0]
+            while len(k)>0:
+                end = p[keys[-1]][-1][1]
+                dist = None
+                for i in range(len(k)):
+                    start = p[k[i]][0][1]
+                    dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)    ,   dist )
+                keys += [k[dist[1]]]
+                del k[dist[1]]
 
-            else:
-                ### Sort to reduce Rapid distance
-                k = range(1,len(p))
-                keys = [0]
-                while len(k)>0:
-                    end = p[keys[-1]][-1][1]
-                    dist = None
-                    for i in range(len(k)):
-                        start = p[k[i]][0][1]
-                        dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)    ,   dist )
-                    keys += [k[dist[1]]]
-                    del k[dist[1]]
-
-            for k in keys:
-                subpath = p[k]
-                c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
-                for i in range(1,len(subpath)):
-                    sp1 = [  [subpath[i-1][j][0], subpath[i-1][j][1]] for j in range(3)]
-                    sp2 = [  [subpath[i  ][j][0], subpath[i  ][j][1]] for j in range(3)]
-                    c += biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
+        for k in keys:
+            subpath = p[k]
+            c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
+            for i in range(1,len(subpath)):
+                sp1 = [  [subpath[i-1][j][0], subpath[i-1][j][1]] for j in range(3)]
+                sp2 = [  [subpath[i  ][j][0], subpath[i  ][j][1]] for j in range(3)]
+                c += biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
 #                    l1 = biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
 #                    print_((-f(w[k][i-1]),-f(w[k][i]), [i1[5] for i1 in l1]) )
-                c += [ [ [subpath[-1][1][0],subpath[-1][1][1]]  ,'end',0,0] ]
-                print_("Curve: " + str(c))
-            return c
+            c += [ [ [subpath[-1][1][0],subpath[-1][1][1]]  ,'end',0,0] ]
+        return c
 
 
     def draw_curve(self, curve, layer, group=None, style=styles["biarc_style"]):
@@ -3204,6 +3328,7 @@ class laser_gcode(inkex.Effect):
                 curves = []
                 p = []
                 pt = []
+                attr = []
                 dxfpoints = []
                 for path in paths[layer] :
                     print_(str(layer))
@@ -3227,11 +3352,17 @@ class laser_gcode(inkex.Effect):
                     k=0
                     while k < len(sp):
                         pt.append(sp[k])
+                        id2=path.get("id")+"_"+str(k)
+                        attr.append(id2)
                         k+=1
+                print_("pt=")
+                print_a(pt)
+                print_("attr=")
+                print_a(attr)
                 dxfpoints=sort_dxfpoints(dxfpoints)
-                print_(("dxfpoints=",dxfpoints))
+                print_("dxfpoints=",dxfpoints)
 
-                curve = self.parse_curve(p, layer, pt)
+                curve = self.parse_curve(p, layer, pt, attr)
                 self.draw_curve(curve, layer, biarc_group)
                 gcode += self.generate_gcode(curve, layer, 0)
 
