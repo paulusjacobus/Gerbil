@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
-Modified by Awesome.tech 2017 (Serial streaming feature)
-modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com
+Modified by Stefan Stefanov 2018
+Modified by Jay Johnson 2015, J Tech Photonics, Inc., jtechphotonics.com
 modified by Adam Polak 2014, polakiumengineering.org
 
 based on Copyright (C) 2009 Nick Drobchenko, nick@cnc-club.ru
@@ -26,9 +26,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
-#Change Log
-#DRG1 - added code to create a gerbiltemp directory to contain output files when there isn't a valid directory path from the GUI
-#
+#command line parameters for testing
+#--directory=/tmp --create-log=true --log-filename=/tmp/laser.log /home/sstefanov/testpaths.svg
+import sys
+sys.path.append('/usr/share/inkscape/extensions')
 
 import inkex, simplestyle, simplepath
 import cubicsuperpath, simpletransform, bezmisc
@@ -38,7 +39,6 @@ import math
 import bezmisc
 import re
 import copy
-import sys
 import time
 import cmath
 import numpy
@@ -47,7 +47,11 @@ import random
 import gettext
 _ = gettext.gettext
 import serial
-import errno
+### import pdb; pdb.set_trace()
+#from pprint import pprint
+from svgpathtools import *
+#from objbrowser import browse
+# to debug:  browse(locals())
 
 ### Check if inkex has errormsg (0.46 version doesnot have one.) Could be removed later.
 if "errormsg" not in dir(inkex):
@@ -93,8 +97,7 @@ defaults = {
 'header': """
 G90
 """,
-'footer': """G1 X0 Y0
-#M18
+'footer': """G0 X0Y0\n
 """
 }
 
@@ -1361,6 +1364,18 @@ def print_(*arg):
     f.write("\n")
     f.close()
 
+def print_a(A, x=-1, y=-1, co='green'):
+    global print_
+    for i in range(len(A)):
+        row = A[i]
+        s=""
+        for j in range(len(row)):
+#            if i==x and j==y:
+#                s+=colored(','.join(['{:3}'.format(A[i][j])]),co,attrs=['reverse'])
+#            else:
+            s+=(','.join(['{:3}'.format(A[i][j])]))
+        print_ (s)
+    print_("\n")
 
 ################################################################################
 ###        Point (x,y) operations
@@ -2403,6 +2418,215 @@ class Arangement_Genetic:
 
         #surface.draw()
 
+################################################################################
+###
+###
+###
+###
+###
+###
+###        Path sort
+### S.Stefanov 2018
+###
+###
+###
+###
+###
+###
+###
+################################################################################
+
+# tree sorting
+#return true if p is parent of c
+def is_parent_of(c,p,c_p):
+    if (c_p[p][c]==1):
+        return True
+    else:
+        return False
+
+#return true if p is parent of c
+def have_parent(c,c_p):
+    for i in range(len(c_p[0])):
+        if is_parent_of(c,i,c_p):
+            return True
+    return False
+
+#return true if c is child of p
+def is_child_of(c,p,c_p):
+    if (c_p[c][p]==1):
+        return True
+    else:
+        return False
+
+def sort_nodes(p, par=-1):
+    keys=[]
+    i=0
+    while i<len(p):
+        if p[i]==par:
+            p2=sort_nodes(p,i)
+            for j in range(len(p2)):
+                keys.append(p2[j])
+        i+=1
+    if len(keys)==0:
+        return [par]
+    else:
+        keys.append(par)
+        return keys
+
+#return direct parent of id
+def get_parent(id,c_p):
+    global print_
+    par=[]  # list of parents
+    for i in range(len(c_p[0])):
+        if is_child_of(id,i,c_p):
+            par.append(i)
+    if len(par)>0:
+        i=0
+        while len(par)>1:
+            j=0
+            while len(par)>1 and j < len(par):
+                if i<>j and is_child_of(par[j],par[i],c_p):
+                    del par[i]
+                else:
+                    j+=1
+#                    j=i+1
+            i+=1
+        return par[0]
+    else:
+        return -1
+
+def path1_is_contained_in_path2(path1, path2):
+# return -1 if boxes are not contained ot paths are crossed
+# return1 of contain
+# 0 if not
+    assert path2.isclosed()  # This question isn't well-defined otherwise
+    if path2.intersect(path1):
+        return -1
+    xmin, xmax, ymin, ymax = path2.bbox()
+# trivial cases
+    xmin1, xmax1, ymin1, ymax1 = path1.bbox()
+    if xmax1 < xmin:
+        return -1
+    if xmax < xmin1:
+        return -1
+    if ymax1 < ymin:
+        return -1
+    if ymax < ymin1:
+        return -1
+
+    # find a point that's definitely outside path2
+    B = (xmin + 1) + 1j*(ymax + 1)
+    A = path1.start  # pick an arbitrary point in path1
+    AB_line = Path(Line(A, B))
+    number_of_intersections = len(AB_line.intersect(path2))
+    if number_of_intersections % 2:  # if number of intersections is odd
+        return 1
+    else:
+        return 0
+
+def contain_matrix (subpaths,attr):
+# c_p[i,j] values:
+#-1 if not to check
+# 0 if path i is not contained in path j
+# 1 if path i is contained in path j
+    global print_
+    global print_a
+    c_p=[]
+    for i in range(len(subpaths)):
+        c_p.append([])
+        for j in range(len(subpaths)):
+            if i==j:
+# don't need to sheck path with himself
+                c_p[i].append(-1)
+            else:
+                c_p[i].append(0)
+    print_a (c_p)
+    for i in range(len(subpaths)):
+        for j in range(len(subpaths)):
+            if c_p[j][i] == 0 :
+                cont=path1_is_contained_in_path2(subpaths[j],subpaths[i])
+                if cont==-1:
+                    c_p[i][j]=-1   # don't check opposite again
+                if cont==1 :
+                    c_p[j][i]=1
+                    c_p[i][j]=-1
+#TODO make recursive
+                    for k in range(len(subpaths)):
+                        if k<>j:
+                            if c_p[k][j]==1:
+                                c_p[k][i]=1
+                                c_p[i][k]=-1
+    return c_p
+
+def contains_paths(c_p):
+    contains=[]
+    for i in range(len(c_p[0])):
+        c=0
+        for j in range(len(c_p[0])):
+            if c_p[j][i]==1:
+                c+=1
+        contains.append(c)
+    return contains
+
+def sort_paths(subpaths):
+    global print_
+    contains=contains_paths(subpaths)
+    if maxcont==0 :
+        return ([0])
+    else :
+        order=[]
+        i=0
+        while i<=maxcont :
+            j=0
+            while j<len(subpaths) :
+                if contains[j]==i :
+                    order.append(j)
+                j+=1
+            i+=1
+    return order
+
+def tree_parent(contains):
+    global print_
+    t_p=[]
+    for i in range(len(contains[0])):
+        t_p.append(get_parent(i,contains))
+    return t_p
+
+def tree_order(t_p):
+    global print_
+    order=sort_nodes(t_p)
+    if len(order)>0:
+        del order[-1]
+    return order
+
+def sort_tree_order (t_p, p, parent = -1):
+# sort paths by tree and distance
+    k=[]
+    for i in range(len(t_p)):
+        if t_p[i]==parent:
+            k.append(i)
+    keys = []
+    while len(k)>0:
+        i=0
+        while i<len(k):
+            if t_p[k[i]]==parent:
+                if len(keys)>0:
+                    end = p[keys[-1]][-1][1]
+                else:
+                    end=[0,0]
+                dist = None
+                for ki in range(len(k)):
+                    start = p[k[ki]][0][1]
+                    dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,ki)    ,   dist )
+                new_p = k[dist[1]]  # new parent
+                del k[dist[1]]
+                key = sort_tree_order (t_p, p, new_p)
+                for kk in range(len(key)):
+                    keys += [key[kk]]
+            else:
+                i+=1
+    keys += [parent]
+    return keys
 
 ################################################################################
 ###
@@ -2410,18 +2634,13 @@ class Arangement_Genetic:
 ###
 ################################################################################
 
+
 class laser_gcode(inkex.Effect):
 
     def export_gcode(self,gcode):
         gcode_pass = gcode
         for x in range(1,self.options.passes):
             gcode += "G91\nG1 Z-" + self.options.pass_depth + "\nG90\n" + gcode_pass
-        #DRG1 if not os.path.exists(os.path.dirname(self.options.file)):
-            #DRG1 try:
-                #DRG1 os.makedirs(os.path.dirname(self.options.file))
-            #DRG1 except OSError as exc: # Guard against race condition
-                #DRG1 if exc.errno != errno.EEXIST:
-                    #DRG1 raise
         f = open(self.options.directory+self.options.file, "w")
         f.write(self.options.laser_off_command + " S0" + "\n" + self.header + "G1 F" + self.options.travel_speed + "\n" + gcode + self.footer)
         f.close()
@@ -2438,8 +2657,11 @@ class laser_gcode(inkex.Effect):
         self.OptionParser.add_option("",   "--laser-power",                     action="store", type="int",             dest="laser_power",                         default="256",                          help="S# is 256 or 10000 for full power")
         self.OptionParser.add_option("",   "--passes",                          action="store", type="int",             dest="passes",                              default="1",                            help="Quantity of passes")
         self.OptionParser.add_option("",   "--pass-depth",                      action="store", type="string",          dest="pass_depth",                          default="1",                            help="Depth of laser cut")
+        self.OptionParser.add_option("",   "--homing",                          action="store", type="int",             dest="homing",                              default="1",                          help="Homing to find 0,0 coordinates")
+        self.OptionParser.add_option("",   "--offset",                          action="store", type="inkbool",         dest="offset",                              default=False,                          help="Enable or disable offsets")
+        self.OptionParser.add_option("",   "--xoffset",                         action="store", type="string",          dest="xoffset",                             default="0.0",                          help="X offset from zero")
+        self.OptionParser.add_option("",   "--yoffset",                         action="store", type="string",          dest="yoffset",                             default="0.0",                          help="Y offset from zero")
         self.OptionParser.add_option("",   "--power-delay",                     action="store", type="string",          dest="power_delay",                         default="100",                          help="Laser power-on delay (ms)")
-        self.OptionParser.add_option("",   "--homing",                          action="store", type="string",          dest="homing",                              default="1",                            help="Homing option")
         self.OptionParser.add_option("",   "--suppress-all-messages",           action="store", type="inkbool",         dest="suppress_all_messages",               default=True,                           help="Hide messages during g-code generation")
         self.OptionParser.add_option("",   "--create-log",                      action="store", type="inkbool",         dest="log_create_log",                      default=False,                          help="Create log files")
         self.OptionParser.add_option("",   "--log-filename",                    action="store", type="string",          dest="log_filename",                        default='',                             help="Create log files")
@@ -2448,15 +2670,51 @@ class laser_gcode(inkex.Effect):
         self.OptionParser.add_option("",   "--active-tab",                      action="store", type="string",          dest="active_tab",                          default="",                             help="Defines which tab is active")
         self.OptionParser.add_option("",   "--biarc-max-split-depth",           action="store", type="int",             dest="biarc_max_split_depth",               default="4",                            help="Defines maximum depth of splitting while approximating using biarcs.")
         self.OptionParser.add_option("",   "--stream",                          action="store", type="inkbool",         dest="stream",                              default=False,                          help="Streams to Gerbil controller")
-		
-    def parse_curve(self, p, layer, w = None, f = None):
-            c = []
-            if len(p)==0 :
-                return []
-            p = self.transform_csp(p, layer)
 
+    def parse_curve(self, p, layer, pt, attr, w = None, f = None, ):
+        global print_
+# True for tree sort, False for flat sort
+        tree_sort=True
 
-            ### Sort to reduce Rapid distance
+        c = []
+        if len(p)==0 :
+            return []
+        p = self.transform_csp(p, layer)
+        c_p=contain_matrix(pt, attr)
+        contain=contains_paths(c_p)
+        contmax=max(contain)
+        if contmax>0 :
+            if tree_sort:
+                t_p = tree_parent (c_p)
+                keys = sort_tree_order(t_p, p)
+                if (len(keys))>0:
+                    del keys[-1]
+            else:
+# flat sort
+                k = range(0,len(contain))
+                keys = []
+                co = 0
+                while len(k)>0:
+                    i=0
+                    while i<len(contain):
+                        if contain[i]==co:
+                            if len(keys)>0:
+                                end = p[keys[-1]][-1][1]
+                            else:
+                                end=[0,0]
+                            dist = None
+                            for ki in range(len(k)):
+                                if contain[ki]==co:
+                                    start = p[k[ki]][0][1]
+                                    dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,ki)    ,   dist )
+                            keys += [k[dist[1]]]
+                            del k[dist[1]]
+                            del contain[dist[1]]
+                        else:
+                            i+=1
+                    co+=1
+        else:
+            ### contmax = 0, Sort to reduce Rapid distance
             k = range(1,len(p))
             keys = [0]
             while len(k)>0:
@@ -2467,18 +2725,18 @@ class laser_gcode(inkex.Effect):
                     dist = max(   ( -( ( end[0]-start[0])**2+(end[1]-start[1])**2 ) ,i)    ,   dist )
                 keys += [k[dist[1]]]
                 del k[dist[1]]
-            for k in keys:
-                subpath = p[k]
-                c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
-                for i in range(1,len(subpath)):
-                    sp1 = [  [subpath[i-1][j][0], subpath[i-1][j][1]] for j in range(3)]
-                    sp2 = [  [subpath[i  ][j][0], subpath[i  ][j][1]] for j in range(3)]
-                    c += biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
+
+        for k in keys:
+            subpath = p[k]
+            c += [ [    [subpath[0][1][0],subpath[0][1][1]]   , 'move', 0, 0] ]
+            for i in range(1,len(subpath)):
+                sp1 = [  [subpath[i-1][j][0], subpath[i-1][j][1]] for j in range(3)]
+                sp2 = [  [subpath[i  ][j][0], subpath[i  ][j][1]] for j in range(3)]
+                c += biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
 #                    l1 = biarc(sp1,sp2,0,0) if w==None else biarc(sp1,sp2,-f(w[k][i-1]),-f(w[k][i]))
 #                    print_((-f(w[k][i-1]),-f(w[k][i]), [i1[5] for i1 in l1]) )
-                c += [ [ [subpath[-1][1][0],subpath[-1][1][1]]  ,'end',0,0] ]
-                print_("Curve: " + str(c))
-            return c
+            c += [ [ [subpath[-1][1][0],subpath[-1][1][1]]  ,'end',0,0] ]
+        return c
 
 
     def draw_curve(self, curve, layer, group=None, style=styles["biarc_style"]):
@@ -2565,24 +2823,12 @@ class laser_gcode(inkex.Effect):
 
 
     def check_dir(self):
-        
-        if (os.path.isdir(self.options.directory)) == False: #DRG1
-            if sys.platform.startswith('win'): #DRG1
-                self.options.directory = 'C:\\gerbiltemp' #DRG1
-            else: #DRG1
-                self.options.directory = '/gerbiltemp' #DRG1
-            if (os.path.isdir(self.options.directory)) == False: #DRG1
-                os.mkdir(self.options.directory) #DRG1
-            inkex.debug("The directory you specified does not exist - using " + self.options.directory + " instead") #DRG1
-            #inkex.debug(self.options.directory) #DRG1
-        if self.options.directory[-1] not in ["/", "\\"]:
+        if self.options.directory[-1] not in ["/","\\"]:
             if "\\" in self.options.directory :
                 self.options.directory += "\\"
             else :
                 self.options.directory += "/"
-        #inkex.debug(self.options.directory) #DRG1
-        #inkex.debug(self.options.directory[-1]) #DRG1
-        print_("Checking direcrory: '%s'"%self.options.directory)
+        print_("Checking directory: '%s'"%self.options.directory)
         if (os.path.isdir(self.options.directory)):
             if (os.path.isfile(self.options.directory+'header')):
                 f = open(self.options.directory+'header', 'r')
@@ -2596,11 +2842,24 @@ class laser_gcode(inkex.Effect):
                 f.close()
             else:
                 self.footer = defaults['footer']
-
             if self.options.unit == "G21 (All units in mm)" :
                 self.header += "G21\n"
             elif self.options.unit == "G20 (All units in inches)" :
                 self.header += "G20\n"
+            if self.options.homing == 1:
+                self.header += "$H\n"
+                ##self.footer += "$H\n"
+            elif self.options.homing == 2:
+                self.header += "G0 X0 Y0\n"
+                self.header += "G90\n"
+                self.header += "G92 X0 Y0\n"
+                ##self.footer += "G0 X0 Y0\n"
+            elif self.options.homing == 3:
+                self.header += "G92 X0.0 Y0.0\n"
+            if self.options.offset == True:
+                self.header += "G0 X" + self.options.xoffset + "Y" + self.options.yoffset + "F" + self.options.travel_speed + "\n"
+            else:
+                pass
         else:
             self.error(_("Directory does not exist! Please specify existing directory at options tab!"),"error")
             return False
@@ -2621,15 +2880,14 @@ class laser_gcode(inkex.Effect):
                     max_n = max(max_n,int(r.group(1)))
             filename = name + "_" + ( "0"*(4-len(str(max_n+1))) + str(max_n+1) ) + ext
             self.options.file = filename
-            #inkex.debug(self.options.file) #DRG1
 
-        #DRG1 print_("Testing writing rights on '%s'"%(self.options.directory+self.options.file))
-        #DRG1 try:
-            #DRG1 f = open (self.options.directory,self.options.file, "w")
-            #DRG1 f.close()
-        #DRG1 except:
-            #DRG1 self.error(_("Can not write to specified file!\n%s"%(self.options.directory+self.options.file)),"error")
-            #DRG1 return False
+        print_("Testing writing rights on '%s'"%(self.options.directory+self.options.file))
+        try:
+            f = open(self.options.directory+self.options.file, "w")
+            f.close()
+        except:
+            self.error(_("Can not write to specified file!\n%s"%(self.options.directory+self.options.file)),"error")
+            return False
         return True
 
 
@@ -2639,7 +2897,7 @@ class laser_gcode(inkex.Effect):
 ###        Generate Gcode
 ###        Generates Gcode on given curve.
 ###
-###        Crve defenitnion [start point, type = {'arc','line','move','end'}, arc center, arc angle, end point, [zstart, zend]]
+###        Curve definition [start point, type = {'arc','line','move','end'}, arc center, arc angle, end point, [zstart, zend]]
 ###
 ################################################################################
     def generate_gcode(self, curve, layer, depth):
@@ -2652,7 +2910,7 @@ class laser_gcode(inkex.Effect):
             r = ''
             for i in range(6):
                 if c[i]!=None:
-                    r += s[i] + ("%f" % (round(c[i],4))).rstrip('0')
+					r += s[i] + ("%f" % (round(c[i],4))).rstrip('0')
 
             return r
 
@@ -2753,7 +3011,7 @@ class laser_gcode(inkex.Effect):
                     print_("Layer '%s' Orientation points: " % orientation_layer.get(inkex.addNS('label','inkscape')))
                     for point in points:
                         print_(point)
-                    #    Zcoordinates definition taken from Orientatnion point 1 and 2
+                    #    Zcoordinates definition taken from Orientation point 1 and 2
                     self.Zcoordinates[layer] = [max(points[0][1][2],points[1][1][2]), min(points[0][1][2],points[1][1][2])]
                     matrix = numpy.array([
                                 [points[0][0][0], points[0][0][1], 1, 0, 0, 0, 0, 0, 0],
@@ -3041,6 +3299,7 @@ class laser_gcode(inkex.Effect):
                 cw=[]
                 for j in xrange(0,len(points)):
                     p=get_boundaries(get_boundaries(tpoints)[w[0]])[w[1]]
+                    print_(("boundaries [p]=",p))
                     tpoints.remove(p[0])
                     cw+=p
                 curlen = get_way_len(cw)
@@ -3066,10 +3325,14 @@ class laser_gcode(inkex.Effect):
         for layer in self.layers :
             if layer in paths :
                 print_(("layer",layer))
+                curves = []
                 p = []
+                pt = []
+                attr = []
                 dxfpoints = []
                 for path in paths[layer] :
                     print_(str(layer))
+                    print_(("layer in path ",path))
                     if "d" not in path.keys() :
                         self.error(_("Warning: One or more paths dont have 'd' parameter, try to Ungroup (Ctrl+Shift+G) and Object to Path (Ctrl+Shift+C)!"),"selection_contains_objects_that_are_not_paths")
                         continue
@@ -3083,8 +3346,23 @@ class laser_gcode(inkex.Effect):
                         dxfpoints += [[x,y]]
                     else:
                         p += csp
+# added new array sp of subpaths to calculate contained paths
+                    mypath = parse_path(path.get("d"))
+                    sp=mypath.continuous_subpaths()
+                    k=0
+                    while k < len(sp):
+                        pt.append(sp[k])
+                        id2=path.get("id")+"_"+str(k)
+                        attr.append(id2)
+                        k+=1
+                print_("pt=")
+                print_a(pt)
+                print_("attr=")
+                print_a(attr)
                 dxfpoints=sort_dxfpoints(dxfpoints)
-                curve = self.parse_curve(p, layer)
+                print_("dxfpoints=",dxfpoints)
+
+                curve = self.parse_curve(p, layer, pt, attr)
                 self.draw_curve(curve, layer, biarc_group)
                 gcode += self.generate_gcode(curve, layer, 0)
 
@@ -3096,166 +3374,167 @@ class laser_gcode(inkex.Effect):
 ###
 ################################################################################
     def gcodetocontroller(self, port, pos_file_gcode, pos_file_log):
-        #streaming code start
 
-        RX_BUFFER_SIZE = 128 #128
-        BAUD_RATE = 115200
-        ENABLE_STATUS_REPORTS = True
-        REPORT_INTERVAL = 1.0 # seconds
+		#streaming code start
 
-        is_run = True # Controls query timer
+		RX_BUFFER_SIZE = 128 #128
+		BAUD_RATE = 115200
+		ENABLE_STATUS_REPORTS = True
+		REPORT_INTERVAL = 1.0 # seconds
 
-        verbose = False
-        settings_mode = False
-        check_mode = False
-        f = open(pos_file_gcode, 'r')
-        if verbose :
-                log = open(pos_file_log, 'w')			
-        # Initialize, we choose the first of available ports!
-        s = serial.Serial(port[0],BAUD_RATE)
-        s.writeTimeout = 0.2
-        s.timeout = 0.2	
-        s.flushInput()
-        s.flushOutput()		
+		is_run = True # Controls query timer
 
-        #print "Initializing Grbl..."
-        s.write("\r\n\r\n")
-        # Wait for grbl to initialize and flush startup text in serial input
-        time.sleep(2)
-        s.write("$X\n")
-        time.sleep(2)
-        s.flushInput()
-        start_time = time.time();
-        # Stream g-code to grbl
-        l_count = 0
-        error_count = 0
-        out_temp = 0
-        g_count = 0
-        c_line = []
-        for line in f:
-                l_count += 1 # Iterate line counter
-                l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
-                # l_block = line.strip()
-                c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
-                grbl_out = '' 
-                while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
-                        try :
-                                out_temp = s.readline().strip() # Wait for grbl response
-                                #time.sleep(0.2) debug stuff
-                        except :
-                                if verbose : log.write("\nG-code block read error!")
-                                pass
-                        if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-                                #s.flushInput()
-                                if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
-                        else :
-                                if out_temp.find('error') >= 0 or out_temp == 0 : 
-                                        error_count += 1
-                                        if verbose : log.write("\n Error rate "+ str(error_count))
-                                g_count += 1 # Iterate g-code counter
-                                if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
-                                #if l_block > 0 :
-                                if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
-                                del c_line[0] # Delete the block character count corresponding to the last 'ok'
-                try:
-                        # time.sleep(.1) debug stuff
-                        s.write(l_block + '\n') # Send g-code block to grbl
-                except:
-                        if verbose : log.write("\nG-code block comm error!")
-                        s.close()
-                        break
-                if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
-        # time.sleep(1)
-        # Wait until all responses have been received.
-        while l_count > g_count :
-                try:
-                        out_temp = s.readline(s.inWaiting()).strip() # Wait for grbl response
-                except:
-                        log.write("\nG-code block read error!")
-                        pass
-                if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
-                        if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
-                else :
-                        if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
-                        g_count += 1 # Iterate g-code counter
-                        if verbose : log.write("\nG-code file finished!")
-                        del c_line[0] # Delete the block character count corresponding to the last 'ok'
-                        if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
-        # Wait for streaming completed
-        if verbose : log.write("\nG-code streaming finished!"+ l_block);
-        end_time = time.time();
-        time.sleep(2);
-        is_run = False;
-        try:
-                s.write("\r\n\r\n")
-        except:
-                if verbose : log.write("\n error s.write to gerbil")
-                pass
-        s.reset_input_buffer();
-        if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
-        if check_mode :
-                if error_count > 0 :
-                        if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
-                else :
-                        if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
-        else :
-           if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
-           time.sleep(2)
-           #s.reset_output_buffer()
-           #raw_input("  Press <Enter> to exit and disable Grbl.") 
-        try:
-                s.reset_input_buffer()
-                time.sleep(2)
-        except:
-                if verbose : log.write( "Error reset input port.")
-                pass			
-        try:
-                # Close file and serial port
-                #file_gcode.close()
-                f.close()
-        except:
-                if verbose : log.write( "Error close file. "+ f)
-                pass				
-        try:
-                s.close()
-        except:
-                if verbose : log.write( "Error close port.")
-                pass
-        try:
-                log.close()
-        except:
-                if verbose : log.write( "Error close log.")
-                pass
-	
+		verbose = True
+		settings_mode = False
+		check_mode = False
+		f = open(pos_file_gcode, 'r')
+		if verbose :
+			log = open(pos_file_log, 'w')
+		# Initialize
+		s = serial.Serial(port[0],BAUD_RATE)
+		s.writeTimeout = 0.2
+		s.timeout = 0.2
+		s.flushInput()
+		s.flushOutput()
+
+		#print "Initializing Grbl..."
+		s.write("\r\n\r\n")
+		# Wait for grbl to initialize and flush startup text in serial input
+		time.sleep(2)
+		s.write("$X\n")
+		time.sleep(2)
+		#s.flushInput()
+		start_time = time.time();
+		# Stream g-code to grbl
+		l_count = 0
+		error_count = 0
+		out_temp = 0
+		g_count = 0
+		c_line = []
+		for line in f:
+			l_count += 1 # Iterate line counter
+			l_block = re.sub('\s|\(.*?\)','',line).upper() # Strip comments/spaces/new line and capitalize
+			# l_block = line.strip()
+			c_line.append(len(l_block)+1) # Track number of characters in grbl serial read buffer
+			grbl_out = ''
+			while sum(c_line) >= RX_BUFFER_SIZE-1 | s.inWaiting() :
+				try :
+					out_temp = s.readline().strip() # Wait for grbl response
+					#time.sleep(0.2)
+				except :
+					if verbose : log.write("\nG-code block read error!")
+					pass
+				if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+					#s.flushInput()
+					if verbose : log.write ( "    MSG: not Ok/Error \""+out_temp+"\"") # Debug response
+				else :
+					if out_temp.find('error') >= 0 or out_temp == 0 :
+						error_count += 1
+						if verbose : log.write("\n Error rate "+ str(error_count))
+					g_count += 1 # Iterate g-code counter
+					if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp+"\"")
+					#if l_block > 0 :
+					if verbose : log.write("\n c_line array sum "+str(sum(c_line)))
+					del c_line[0] # Delete the block character count corresponding to the last 'ok'
+			try:
+				#time.sleep(.1)
+				s.write(l_block + '\n') # Send g-code block to grbl
+			except:
+				if verbose : log.write("\nG-code block comm error!")
+				s.close()
+				break
+			if verbose: log.write( "SND>"+str(l_count)+": \"" + l_block + "\"")
+		#time.sleep(1)
+		# Wait until all responses have been received.
+		while l_count > g_count :
+			try:
+				out_temp = s.readline(s.inWaiting()).strip() # Wait for grbl response
+			except:
+				log.write("\nG-code block read error!")
+				pass
+			if out_temp.find('ok') < 0 and out_temp.find('error') < 0 :
+				if verbose : log.write ( "    MSG: \""+out_temp+"\"") # Debug response
+			else :
+				if out_temp.find('error') >= 0 or out_temp == 0 : error_count += 1
+				g_count += 1 # Iterate g-code counter
+				if verbose : log.write("\nG-code file finished!")
+				del c_line[0] # Delete the block character count corresponding to the last 'ok'
+				if verbose: log.write( "  REC<"+str(g_count)+": \""+out_temp + "\""+str(sum(c_line)))
+		# Wait for user input after streaming is completed
+		if verbose : log.write("\nG-code streaming finished!"+ l_block);
+		end_time = time.time()
+		time.sleep(2)
+		is_run = False
+		# try:
+			# s.write("\r\n\r\n")
+		# except:
+			# if verbose : log.write("\n error s.write to gerbil")
+			# pass
+		# s.reset_input_buffer();
+		if verbose : log.write ( " Time elapsed: "+str(end_time-start_time)+"\n");
+		if check_mode :
+			if error_count > 0 :
+				if verbose : log.write ( "CHECK FAILED:",str(error_count),"errors found! See output for details.\n")
+			else :
+				if verbose : log.write ( "CHECK PASSED: No errors found in g-code program.\n")
+		else :
+		   if verbose : log.write( "WARNING: Wait until Grbl completes buffered g-code blocks before exiting.")
+		   time.sleep(0.2);
+		   #s.reset_output_buffer()
+		   #raw_input("  Press <Enter> to exit and disable Grbl.")
+		try:
+			#s.reset_input_buffer()
+			time.sleep(0.2);
+		except:
+			if verbose : log.write( "Error reset input port.")
+			pass
+		try:
+			# Close file and serial port
+			#file_gcode.close()
+			f.close()
+		except:
+			if verbose : log.write( "Error close file. "+ f)
+			pass
+		try:
+			s.close()
+		except:
+			if verbose : log.write( "Error close port.")
+			pass
+		try:
+			log.close()
+		except:
+			if verbose : log.write( "Error close log.")
+			pass
+
     def serial_ports(self):
     # """ Lists serial port names
 
         # :raises EnvironmentError:
             # On unsupported or unknown platforms
         # :returns:
-            # A list of the serial ports available on the system (we choose the first one available)
+            # A list of the serial ports available on the system
     # """
-        #global serial
-        if sys.platform.startswith('win'):
-                ports = ['COM%s' % (i + 1) for i in range(256)]
-        elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
-                # this excludes your current terminal "/dev/tty"
-                ports = glob.glob('/dev/tty[A-Za-z]*')
-        elif sys.platform.startswith('darwin'):
-                ports = glob.glob('/dev/tty.*')
-        else:
-                raise EnvironmentError('Unsupported platform')
+		#global serial
+		if sys.platform.startswith('win'):
+			ports = ['COM%s' % (i + 1) for i in range(256)]
+		elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+			# this excludes your current terminal "/dev/tty"
+			ports = glob.glob('/dev/tty[A-Za-z]*')
+		elif sys.platform.startswith('darwin'):
+			ports = glob.glob('/dev/tty.*')
+		else:
+			raise EnvironmentError('Unsupported platform')
 
-        result = []
-        for port in ports:
-                try:
-                        s = serial.Serial(port)
-                        s.close()
-                        result.append(port)
-                except (OSError, serial.SerialException):
-                        pass
-        return result
-		
+		result = []
+		for port in ports:
+			try:
+				s = serial.Serial(port)
+				s.close()
+				result.append(port)
+			except (OSError, serial.SerialException):
+				pass
+		return result
+
 ################################################################################
 ###
 ###        Orientation
@@ -3367,11 +3646,8 @@ class laser_gcode(inkex.Effect):
 
         self.laser()
 
-        #inkex.debug(self.options.directory+self.options.file) #DRG1
-        if self.options.stream == True :
-            self.gcodetocontroller((self.serial_ports()),((self.options.directory+self.options.file)),((self.options.directory+self.options.file+"_log")))
+	if self.options.stream == True : self.gcodetocontroller((self.serial_ports()),((self.options.directory+self.options.file)),((self.options.directory+self.options.file+"_log")))
 
-			
 
 
 e = laser_gcode()

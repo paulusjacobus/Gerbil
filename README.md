@@ -18,7 +18,7 @@ Once the laser head starts sputtering then you know you are driving your control
 
 ## Set Inkscape import resolution:
 The import a picture from the File function from the Import menu uses a default import resolution of 96 dpi. So that reduces your pictures to 96 dpi. To change that:
-- Open the preferences in the edit menu (Shift + Control + p). 
+- Open the preferences in the edit menu (Shift + Control + p).
 - Select Bitmaps and change the default import resolution to 381 dpi
 
 ## Using the Raster Engraving plugin:
@@ -32,6 +32,7 @@ The import a picture from the File function from the Import menu uses a default 
 
 ## Using the Vector Cutting Plug in:
 The instructions for using of JTech Inkscape plug in can be found here: https://jtechphotonics.com/?page_id=2012
+In addition you have to install svgpathtools from here: https://pypi.org/project/svgpathtools/
 
 Also this plugin allows engraving via vectors (not rastering) and describes how to combine vector engraving and cutting. The download version on here on Github has been altered: the M18 command has been removed to make it compatible with Grbl.
 In inkscape, mirror the Y axis via the button "Flip selected objects horizontally) so that everything looks mirrored in Inkscape and in CNCJS (when uploaded). This is required so the user of the K40 does not have to change their Y axis end stop.
@@ -52,7 +53,7 @@ Note: Next to this, I have added the gcode streaming feature within each Plugin.
 - Upload a raster or vector file (max 10Mb, although can be changed in code)
 - Hit the "Play" button in the top bar
 - The gcode is now send to Gerbil and you can see the progress on the screen in form of completion and visual movement in the gcode depiction
-- The visual reporting bars for the processing queues move. You can change on the fly the F-feed rate, S-Strength of the laser beam, R-receive buffersize. 
+- The visual reporting bars for the processing queues move. You can change on the fly the F-feed rate, S-Strength of the laser beam, R-receive buffersize.
 
 Caveat for cncjs: files can be not large unless you change the source code to allow bigger files (limit is configured to 10Mb because the did not envisage the use of this for laser engraving). You can change this in the source code but installation from scratch with maven and node js is a hell. I asked to increase the size which they did for one release and it was back to 10Mb in the next release, sigh.
 
@@ -68,13 +69,29 @@ Install Inkscape 0.92.0 32 bits not 0.92.2 (buggy) or 64 bits(does work well wil
 Cmd Streamer.py <name_of_the_file> <connectedcomport>
 For example:
 >c:streamer.py name_0001_Gray_256_gcode.txt com1
-  
+
 The comm port can be looked up quickly via CNCjs if you don't know it.
-  
+
 Alternatively you can enter streamer.py which shows you the option keys
-  
+
 If you stil run into python errors than you might need to install another Python library.
 Use the command line tool (MAC or WIN) and type:
 >python setup.py install
 
 Now everything should work smoothly!
+
+## Sorting paths for better laser cutting
+
+When cutting with laser or CNC it is very important to cut first most inner paths to keep whole part in his place.
+Unfortunatelly, there was no such sorting in the Inkscape plugins till now and I decide to implement them here.
+This is modification of the plugin which sort paths and make g-code better for use in cutting machine.
+
+Paths are sorted following way:
+First all paths are divided by subpaths and sorting is applied on subpaths. This is important if there are combined paths.
+Next is generated tree of paths according which path contain other.
+Then tree is sorted from the top using minimal distance. When top path is found sorting is repeated recursively for all subpaths inside following same subtree rules.
+
+As result g-code become more optimal and convinient for cutting parts.
+
+To use this plugin please install svgpathtools from here:
+https://pypi.org/project/svgpathtools/
