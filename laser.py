@@ -1828,10 +1828,14 @@ def biarc(sp1, sp2, z1, z2, depth=0):
         return [ [sp1[1],'line', 0, 0, sp2[1], [z1,z2]] ]
     if TE.mag() < straight_distance_tolerance:
         TE = -(TS+v).unit()
-        r = TS.mag()/v.mag()*2
+        r = v.mag()
+        if r == 0: r = 0.0001	
+        else : r = TS.mag()/v.mag()*2
     elif TS.mag() < straight_distance_tolerance:
         TS = -(TE+v).unit()
-        r = 1/( TE.mag()/v.mag()*2 )
+        r = v.mag()
+        if r == 0: r = 0.0001	
+        else : r = 1/( TE.mag()/v.mag()*2 )
     else:
         r=TS.mag()/TE.mag()
     TS, TE = TS.unit(), TE.unit()
