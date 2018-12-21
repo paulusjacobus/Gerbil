@@ -80,10 +80,10 @@ Use the command line tool (MAC or WIN) and type:
 
 Now everything should work smoothly!
 
-## Sorting paths for better laser cutting
+## Sorting paths for better laser cutting (Credits to Stefanov)
 
 When cutting with laser or CNC it is very important to cut first most inner paths to keep whole part in his place.
-Unfortunatelly, there was no such sorting in the Inkscape plugins till now and I decide to implement them here.
+Unfortunatelly, there was no such sorting in the Inkscape plugins till now and I (read: Stefanov) decide to implement them here.
 This is modification of the plugin which sort paths and make g-code better for use in cutting machine.
 
 Paths are sorted following way:
